@@ -1,193 +1,538 @@
-<!doctype html>
-<html lang="de">
-<head>
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>UNKNOWN</title>
-<style>
-body{margin:0;background:#171414;color:#eee;font-family:system-ui;max-width:520px;margin:auto;padding:18px}
-input,button{padding:12px;border-radius:10px;border:1px solid #66584e;background:#29221e;color:#fff;margin:4px 0;width:100%;box-sizing:border-box}
-button{font-weight:800}
-.card{display:inline-block;width:54px;height:78px;margin:4px;background:#eee;color:#222;border-radius:10px;padding:6px}
-#game{display:none}
-.players{display:grid;grid-template-columns:repeat(4,1fr);gap:5px}
-.p{padding:8px;background:#29221e;border-radius:10px;text-align:center;font-size:11px}
-.active{outline:2px solid #d8ad68}
-</style>
-</head>
-<body>
+import http from "node:http";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { WebSocketServer } from "ws";
 
-<h1>UNKNOWN</h1>
+import {
+  createGame,
+  startGame,
+  related,
+  sameCard,
+  publicState
+} from "./game.js";
 
-<div id="join">
-<input id="name" placeholder="Dein Name">
-<button onclick="create()">LOBBY ERSTELLEN</button>
-<input id="code" placeholder="LOBBY-CODE">
-<button onclick="join()">BEITRETEN</button>
-<div id="msg"></div>
-</div>
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-<div id="game">
-<h2 id="room"></h2>
-<div class="players" id="players"></div>
-<p id="status"></p>
-<button id="start" onclick="start()">SPIEL STARTEN</button>
-<div id="hand"></div>
-<div id="answer"></div>
-</div>
+const PORT = process.env.PORT || 10000;
 
-<script>
-let ws=null;
-let myName="";
-let code=null;
+const game = createGame();
 
-const $=x=>document.getElementById(x);
-
-function connect(message){
-
-  $("msg").textContent="Verbinde…";
-
-  ws=new WebSocket(
-    (location.protocol==="https:"?"wss://":"ws://")+location.host
-  );
-
-  ws.onopen=()=>{
-    send(message);
-  };
-
-  ws.onmessage=e=>{
-
-    const m=JSON.parse(e.data);
-
-    if(m.type==="room"){
-
-      code=m.room;
-
-      $("join").style.display="none";
-      $("game").style.display="block";
-
-      $("room").textContent="LOBBY "+code;
-      $("msg").textContent="";
-
-      return;
-    }
-
-    if(m.type==="error"){
-
-      $("msg").textContent=m.message;
-
-      return;
-    }
-
-    if(m.type==="state"){
-
-      render(m.state);
-
-    }
-
-  };
-
-  ws.onerror=()=>{
-    $("msg").textContent=
-      "Verbindung zum Server fehlgeschlagen.";
-  };
-
+function send(ws, data) {
+  if (ws && ws.readyState === 1) {
+    ws.send(JSON.stringify(data));
+  }
 }
 
-function send(x){
+function broadcast() {
+  game.players.forEach((player, index) => {
+    if (player.ws && player.connected) {
+      send(player.ws, {
+        type: "state",
+        state: publicState(game, index)
+      });
+    }
+  });
+}
 
-  if(ws && ws.readyState===WebSocket.OPEN){
-    ws.send(JSON.stringify(x));
+function nextTurn() {
+  game.current =
+    (game.current + 1) % game.players.length;
+}
+
+function finishPlay() {
+
+  const pending = game.pending;
+
+  if (!pending || pending.type !== "play") {
+    return;
   }
 
+  const player = game.players[pending.player];
+
+  const relatedVotes =
+    pending.votes.filter(v => v.choice === "related").length;
+
+  const notRelatedVotes =
+    pending.votes.filter(v => v.choice === "notRelated").length;
+
+  const isRelated =
+    relatedVotes >= notRelatedVotes;
+
+  if (isRelated) {
+    player.related.push(pending.card);
+  } else {
+    player.notRelated.push(pending.card);
+  }
+
+  if (game.deck.length > 0) {
+    player.hand.push(game.deck.pop());
+  }
+
+  game.pending = null;
+
+  nextTurn();
+
+  broadcast();
 }
 
-function create(){
+const server = http.createServer((req, res) => {
 
-  myName=$("name").value.trim()||"Spieler";
+  if (req.url === "/" || req.url === "/index.html") {
 
-  connect({
-    type:"create",
-    name:myName
+    const html = fs.readFileSync(
+      path.join(__dirname, "index.html"),
+      "utf8"
+    );
+
+    res.writeHead(200, {
+      "Content-Type": "text/html; charset=utf-8"
+    });
+
+    res.end(html);
+
+    return;
+  }
+
+  if (req.url === "/health") {
+
+    res.writeHead(200, {
+      "Content-Type": "text/plain; charset=utf-8"
+    });
+
+    res.end("UNKNOWN server online");
+
+    return;
+  }
+
+  res.writeHead(404);
+  res.end("Not found");
+});
+
+const wss = new WebSocketServer({
+  server
+});
+
+wss.on("connection", ws => {
+
+  let playerIndex = -1;
+
+  send(ws, {
+    type: "connected"
   });
 
-}
+  ws.on("message", raw => {
 
-function join(){
+    try {
 
-  myName=$("name").value.trim()||"Spieler";
+      const msg = JSON.parse(raw.toString());
 
-  const room=$("code").value.trim();
+      // -------------------------
+      // LOBBY ERSTELLEN
+      // -------------------------
 
-  connect({
-    type:"join",
-    code:room,
-    name:myName
+      if (msg.type === "create") {
+
+        if (game.phase !== "lobby") {
+          send(ws, {
+            type: "error",
+            message: "Das Spiel läuft bereits."
+          });
+          return;
+        }
+
+        if (game.players.length >= 4) {
+          send(ws, {
+            type: "error",
+            message: "Das Spiel ist bereits voll."
+          });
+          return;
+        }
+
+        const player = {
+
+          id: crypto.randomUUID(),
+
+          name:
+            msg.name ||
+            `Spieler ${game.players.length + 1}`,
+
+          ws,
+
+          connected:true,
+
+          secret:null,
+
+          hand:[],
+
+          related:[],
+
+          notRelated:[],
+
+          relatedFlipped:false,
+
+          notRelatedFlipped:false
+
+        };
+
+        game.players.push(player);
+
+        playerIndex =
+          game.players.length - 1;
+
+        send(ws, {
+          type:"room",
+          room:"UNKNOWN"
+        });
+
+        broadcast();
+
+        return;
+      }
+
+      // -------------------------
+      // LOBBY BEITRETEN
+      // -------------------------
+
+      if (msg.type === "join") {
+
+        if (game.phase !== "lobby") {
+
+          send(ws, {
+            type:"error",
+            message:"Das Spiel läuft bereits."
+          });
+
+          return;
+        }
+
+        if (game.players.length >= 4) {
+
+          send(ws, {
+            type:"error",
+            message:"Das Spiel ist bereits voll."
+          });
+
+          return;
+        }
+
+        const player = {
+
+          id:crypto.randomUUID(),
+
+          name:
+            msg.name ||
+            `Spieler ${game.players.length + 1}`,
+
+          ws,
+
+          connected:true,
+
+          secret:null,
+
+          hand:[],
+
+          related:[],
+
+          notRelated:[],
+
+          relatedFlipped:false,
+
+          notRelatedFlipped:false
+
+        };
+
+        game.players.push(player);
+
+        playerIndex =
+          game.players.length - 1;
+
+        send(ws, {
+          type:"room",
+          room:"UNKNOWN"
+        });
+
+        broadcast();
+
+        return;
+      }
+
+      // -------------------------
+      // SPIEL STARTEN
+      // -------------------------
+
+      if (msg.type === "start") {
+
+        if (game.phase !== "lobby") {
+          return;
+        }
+
+        if (game.players.length < 2) {
+
+          send(ws, {
+            type:"error",
+            message:"Mindestens 2 Spieler werden benötigt."
+          });
+
+          return;
+        }
+
+        startGame(game);
+
+        broadcast();
+
+        return;
+      }
+
+      // -------------------------
+      // KARTE SPIELEN
+      // -------------------------
+
+      if (msg.type === "play") {
+
+        if (game.phase !== "playing") {
+          return;
+        }
+
+        if (game.pending) {
+          return;
+        }
+
+        if (playerIndex !== game.current) {
+          return;
+        }
+
+        const player =
+          game.players[playerIndex];
+
+        const cardIndex =
+          Number(msg.cardIndex);
+
+        if (
+          !Number.isInteger(cardIndex) ||
+          cardIndex < 0 ||
+          cardIndex >= player.hand.length
+        ) {
+          return;
+        }
+
+        const card =
+          player.hand.splice(
+            cardIndex,
+            1
+          )[0];
+
+        game.pending = {
+
+          type:"play",
+
+          player:playerIndex,
+
+          card,
+
+          votes:[]
+
+        };
+
+        broadcast();
+
+        return;
+      }
+
+      // -------------------------
+      // RELATED / NOT RELATED
+      // -------------------------
+
+      if (msg.type === "vote") {
+
+        if (
+          game.phase !== "playing" ||
+          !game.pending ||
+          game.pending.type !== "play"
+        ) {
+          return;
+        }
+
+        const voter = playerIndex;
+
+        // Der aktive Spieler darf nicht abstimmen.
+        if (voter === game.pending.player) {
+          return;
+        }
+
+        // Jeder Spieler darf nur einmal abstimmen.
+        if (
+          game.pending.votes.some(
+            v => v.player === voter
+          )
+        ) {
+          return;
+        }
+
+        if (
+          msg.choice !== "related" &&
+          msg.choice !== "notRelated"
+        ) {
+          return;
+        }
+
+        game.pending.votes.push({
+          player:voter,
+          choice:msg.choice
+        });
+
+        const required =
+          game.players.length - 1;
+
+        if (
+          game.pending.votes.length >= required
+        ) {
+          finishPlay();
+        } else {
+          broadcast();
+        }
+
+        return;
+      }
+
+      // -------------------------
+      // IDENTITÄT RATEN
+      // -------------------------
+
+      if (msg.type === "guess") {
+
+        if (game.phase !== "playing") {
+          return;
+        }
+
+        if (game.pending) {
+          return;
+        }
+
+        if (playerIndex !== game.current) {
+          return;
+        }
+
+        const player =
+          game.players[playerIndex];
+
+        if (
+          sameCard(
+            player.secret,
+            msg.guess
+          )
+        ) {
+
+          game.phase = "finished";
+
+          game.winner = player.id;
+
+          broadcast();
+
+          return;
+        }
+
+        game.pending = {
+
+          type:"guess",
+
+          player:playerIndex,
+
+          guess:msg.guess
+
+        };
+
+        broadcast();
+
+        return;
+      }
+
+      // -------------------------
+      // STAPEL NACH FALSCHEM TIPP
+      // -------------------------
+
+      if (msg.type === "flip") {
+
+        if (
+          !game.pending ||
+          game.pending.type !== "guess"
+        ) {
+          return;
+        }
+
+        if (
+          game.pending.player !== playerIndex
+        ) {
+          return;
+        }
+
+        const player =
+          game.players[playerIndex];
+
+        if (msg.pile === "related") {
+
+          player.relatedFlipped = true;
+
+        } else if (
+          msg.pile === "notRelated"
+        ) {
+
+          player.notRelatedFlipped = true;
+
+        } else {
+
+          return;
+
+        }
+
+        game.pending = null;
+
+        nextTurn();
+
+        broadcast();
+
+        return;
+      }
+
+    } catch (error) {
+
+      console.error(
+        "Message error:",
+        error
+      );
+
+    }
+
   });
 
-}
+  ws.on("close", () => {
 
-function start(){
+    if (
+      playerIndex >= 0 &&
+      game.players[playerIndex]
+    ) {
 
-  send({
-    type:"start"
+      game.players[playerIndex].connected = false;
+
+      game.players[playerIndex].ws = null;
+
+      broadcast();
+
+    }
+
   });
 
-}
+});
 
-function render(s){
+server.listen(
+  PORT,
+  "0.0.0.0",
+  () => {
 
-  const myIndex=
-    s.players.findIndex(p=>p.name===myName);
+    console.log(
+      `UNKNOWN server listening on port ${PORT}`
+    );
 
-  $("players").innerHTML=
-    s.players.map((p,i)=>`
-
-      <div class="p ${i===s.current?"active":""}">
-        ${p.name}<br>
-        ${p.handCount} Karten
-      </div>
-
-    `).join("");
-
-  $("start").style.display=
-    s.phase==="lobby" && myIndex===0
-      ? "block"
-      : "none";
-
-  $("status").textContent=
-    s.phase==="lobby"
-      ? "Warte auf Spieler…"
-      : s.phase==="finished"
-        ? "Spiel beendet."
-        : s.current===myIndex
-          ? "Du bist dran."
-          : "Spieler "+(s.current+1)+" ist dran.";
-
-  const hand=
-    s.players[myIndex]?.hand||[];
-
-  $("hand").innerHTML=
-    hand.map((c,i)=>`
-
-      <button
-        class="card"
-        onclick="play(${i})">
-        Karte ${c.id+1}
-      </button>
-
-    `).join("");
-
-}
-
-function play(i){
-
-  send({
-    type:"play",
-    cardIndex:i
-  });
-
-}
-</script>
-
-</body>
-</html>
+  }
+);
