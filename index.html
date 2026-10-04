@@ -1,538 +1,965 @@
-import http from "node:http";
-import fs from "node:fs";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-import { WebSocketServer } from "ws";
+<!doctype html>
+<html lang="de">
+<head>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>UNKNOWN</title>
 
-import {
-  createGame,
-  startGame,
-  related,
-  sameCard,
-  publicState
-} from "./game.js";
+<style>
+*{box-sizing:border-box}
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-const PORT = process.env.PORT || 10000;
-
-const game = createGame();
-
-function send(ws, data) {
-  if (ws && ws.readyState === 1) {
-    ws.send(JSON.stringify(data));
-  }
+body{
+  margin:0;
+  background:#12100f;
+  color:#f4eee5;
+  font-family:system-ui,-apple-system,sans-serif;
+  max-width:700px;
+  margin:auto;
+  padding:16px;
 }
 
-function broadcast() {
-  game.players.forEach((player, index) => {
-    if (player.ws && player.connected) {
-      send(player.ws, {
-        type: "state",
-        state: publicState(game, index)
-      });
+h1{
+  text-align:center;
+  letter-spacing:8px;
+  margin:8px 0 24px;
+}
+
+h2{
+  margin:8px 0 14px;
+}
+
+input,button{
+  width:100%;
+  padding:13px;
+  border-radius:10px;
+  border:1px solid #66584e;
+  background:#29221e;
+  color:#fff;
+  margin:5px 0;
+  font-size:15px;
+}
+
+button{
+  font-weight:800;
+  cursor:pointer;
+}
+
+button:disabled{
+  opacity:.45;
+}
+
+#game{
+  display:none;
+}
+
+.players{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:6px;
+  margin-bottom:12px;
+}
+
+.player{
+  background:#29221e;
+  border-radius:10px;
+  padding:9px 5px;
+  text-align:center;
+  font-size:12px;
+}
+
+.player.active{
+  outline:2px solid #d8ad68;
+}
+
+.player.me{
+  background:#352c26;
+}
+
+.status{
+  text-align:center;
+  padding:12px;
+  background:#211c19;
+  border-radius:10px;
+  margin:10px 0;
+}
+
+.card{
+  background:#f1eadf;
+  color:#171412;
+  border-radius:14px;
+  padding:12px;
+  margin:6px 0;
+  border:2px solid #b9a992;
+  text-align:left;
+}
+
+.card strong{
+  display:block;
+  font-size:16px;
+  margin-bottom:5px;
+}
+
+.card span{
+  display:block;
+  font-size:12px;
+  margin:3px 0;
+}
+
+.hand{
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:8px;
+}
+
+.hand .card{
+  min-height:125px;
+}
+
+.playcard{
+  cursor:pointer;
+}
+
+.playcard:hover{
+  transform:translateY(-2px);
+}
+
+.section{
+  background:#1b1816;
+  border:1px solid #3d342e;
+  border-radius:14px;
+  padding:12px;
+  margin:12px 0;
+}
+
+.piles{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+}
+
+.pile{
+  min-height:90px;
+  background:#29221e;
+  border-radius:10px;
+  padding:10px;
+  text-align:center;
+}
+
+.vote{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+}
+
+.vote button{
+  min-height:60px;
+}
+
+.related{
+  border-color:#7d9b72;
+}
+
+.notrelated{
+  border-color:#9b7272;
+}
+
+.hidden{
+  display:none!important;
+}
+
+.small{
+  font-size:12px;
+  opacity:.7;
+  text-align:center;
+}
+
+#message{
+  text-align:center;
+  margin:8px 0;
+  min-height:20px;
+}
+</style>
+</head>
+
+<body>
+
+<h1>UNKNOWN</h1>
+
+<!-- LOBBY -->
+
+<div id="join">
+
+  <input id="name" placeholder="Dein Name">
+
+  <button onclick="createLobby()">
+    LOBBY ERSTELLEN
+  </button>
+
+  <input id="code" placeholder="LOBBY-CODE">
+
+  <button onclick="joinLobby()">
+    BEITRETEN
+  </button>
+
+  <div id="message"></div>
+
+</div>
+
+
+<!-- SPIEL -->
+
+<div id="game">
+
+  <h2 id="room"></h2>
+
+  <div class="players" id="players"></div>
+
+  <div class="status" id="status"></div>
+
+  <button id="startButton" onclick="startGame()">
+    SPIEL STARTEN
+  </button>
+
+
+  <!-- ABSTIMMUNG -->
+
+  <div id="voteSection" class="section hidden">
+
+    <h3>Beurteile die Karte</h3>
+
+    <div id="playedCard"></div>
+
+    <div class="vote">
+
+      <button
+        class="related"
+        onclick="vote('related')">
+
+        ✓ RELATED
+
+      </button>
+
+      <button
+        class="notrelated"
+        onclick="vote('notRelated')">
+
+        ✕ NOT RELATED
+
+      </button>
+
+    </div>
+
+    <div id="voteInfo" class="small"></div>
+
+  </div>
+
+
+  <!-- RATEN -->
+
+  <div id="guessSection" class="section hidden">
+
+    <h3>Wer bin ich?</h3>
+
+    <p class="small">
+      Wähle deine vermutete Identität.
+    </p>
+
+    <select id="guessCharacter"></select>
+    <select id="guessAccessory"></select>
+    <select id="guessLocation"></select>
+
+    <button onclick="guessIdentity()">
+      IDENTITÄT RATEN
+    </button>
+
+  </div>
+
+
+  <!-- FALSCHER TIPP -->
+
+  <div id="flipSection" class="section hidden">
+
+    <h3>Falsch geraten</h3>
+
+    <p>
+      Wähle einen deiner beiden Stapel,
+      der verdeckt wird.
+    </p>
+
+    <button onclick="flipPile('related')">
+      RELATED-STAPEL
+    </button>
+
+    <button onclick="flipPile('notRelated')">
+      NOT-RELATED-STAPEL
+    </button>
+
+  </div>
+
+
+  <!-- HAND -->
+
+  <div class="section">
+
+    <h3>Deine Hand</h3>
+
+    <div id="hand" class="hand"></div>
+
+  </div>
+
+
+  <!-- STAPEL -->
+
+  <div class="section">
+
+    <h3>Deine Stapel</h3>
+
+    <div class="piles">
+
+      <div class="pile">
+        <strong>RELATED</strong>
+        <div id="relatedCount">0 Karten</div>
+      </div>
+
+      <div class="pile">
+        <strong>NOT RELATED</strong>
+        <div id="notRelatedCount">0 Karten</div>
+      </div>
+
+    </div>
+
+  </div>
+
+
+  <div class="small">
+    Karten im Nachziehstapel:
+    <span id="deckCount">0</span>
+  </div>
+
+</div>
+
+
+<script>
+
+let ws=null;
+let myName="";
+let myIndex=-1;
+let gameState=null;
+
+const CHARACTERS=[
+  "Revolverheldin",
+  "Sheriff",
+  "Goldgräberin",
+  "Gefangener",
+  "Banditin",
+  "Saloonbesitzer",
+  "Kopfgeldjäger"
+];
+
+const ACCESSORIES=[
+  "Sombrero",
+  "Zylinder",
+  "Partyhut",
+  "Sonnenbrille",
+  "Kopfhörer",
+  "Kochmütze",
+  "Krone"
+];
+
+const LOCATIONS=[
+  "Büro",
+  "Vulkan",
+  "Strand",
+  "Berge",
+  "Weltraum",
+  "Unterwasserwelt",
+  "Nachtclub"
+];
+
+const $=id=>document.getElementById(id);
+
+
+function connect(message){
+
+  $("message").textContent="Verbinde…";
+
+  ws=new WebSocket(
+    (location.protocol==="https:"?"wss://":"ws://")
+    +location.host
+  );
+
+  ws.onopen=()=>{
+
+    ws.send(JSON.stringify(message));
+
+  };
+
+
+  ws.onmessage=e=>{
+
+    const msg=JSON.parse(e.data);
+
+
+    if(msg.type==="room"){
+
+      $("join").style.display="none";
+
+      $("game").style.display="block";
+
+      $("room").textContent=
+        "LOBBY "+msg.room;
+
+      $("message").textContent="";
+
+      return;
     }
+
+
+    if(msg.type==="error"){
+
+      $("message").textContent=
+        msg.message;
+
+      return;
+    }
+
+
+    if(msg.type==="state"){
+
+      gameState=msg.state;
+
+      render();
+
+    }
+
+  };
+
+
+  ws.onerror=()=>{
+
+    $("message").textContent=
+      "Verbindung zum Server fehlgeschlagen.";
+
+  };
+
+}
+
+
+function send(data){
+
+  if(ws && ws.readyState===WebSocket.OPEN){
+
+    ws.send(JSON.stringify(data));
+
+  }
+
+}
+
+
+function createLobby(){
+
+  myName=
+    $("name").value.trim() ||
+    "Spieler";
+
+  connect({
+    type:"create",
+    name:myName
   });
+
 }
 
-function nextTurn() {
-  game.current =
-    (game.current + 1) % game.players.length;
+
+function joinLobby(){
+
+  myName=
+    $("name").value.trim() ||
+    "Spieler";
+
+  const code=
+    $("code").value.trim();
+
+  connect({
+    type:"join",
+    code,
+    name:myName
+  });
+
 }
 
-function finishPlay() {
 
-  const pending = game.pending;
+function startGame(){
 
-  if (!pending || pending.type !== "play") {
+  send({
+    type:"start"
+  });
+
+}
+
+
+function render(){
+
+  if(!gameState){
     return;
   }
 
-  const player = game.players[pending.player];
 
-  const relatedVotes =
-    pending.votes.filter(v => v.choice === "related").length;
-
-  const notRelatedVotes =
-    pending.votes.filter(v => v.choice === "notRelated").length;
-
-  const isRelated =
-    relatedVotes >= notRelatedVotes;
-
-  if (isRelated) {
-    player.related.push(pending.card);
-  } else {
-    player.notRelated.push(pending.card);
-  }
-
-  if (game.deck.length > 0) {
-    player.hand.push(game.deck.pop());
-  }
-
-  game.pending = null;
-
-  nextTurn();
-
-  broadcast();
-}
-
-const server = http.createServer((req, res) => {
-
-  if (req.url === "/" || req.url === "/index.html") {
-
-    const html = fs.readFileSync(
-      path.join(__dirname, "index.html"),
-      "utf8"
+  myIndex=
+    gameState.players.findIndex(
+      p=>p.name===myName
     );
 
-    res.writeHead(200, {
-      "Content-Type": "text/html; charset=utf-8"
-    });
 
-    res.end(html);
+  renderPlayers();
+
+  renderStatus();
+
+  renderHand();
+
+  renderPiles();
+
+  renderVote();
+
+  renderGuess();
+
+  renderFlip();
+
+
+  $("deckCount").textContent=
+    gameState.deckCount;
+
+
+  $("startButton").style.display=
+    gameState.phase==="lobby" &&
+    myIndex===0
+      ? "block"
+      : "none";
+
+}
+
+
+function renderPlayers(){
+
+  $("players").innerHTML=
+    gameState.players.map((p,i)=>`
+
+      <div class="
+        player
+        ${i===gameState.current?"active":""}
+        ${i===myIndex?"me":""}
+      ">
+
+        <strong>${escapeHtml(p.name)}</strong>
+
+        <br>
+
+        ${p.handCount} Handkarten
+
+        <br>
+
+        🔗 ${p.relatedCount}
+        &nbsp;
+        🚫 ${p.notRelatedCount}
+
+      </div>
+
+    `).join("");
+
+}
+
+
+function renderStatus(){
+
+  if(gameState.phase==="lobby"){
+
+    $("status").textContent=
+      "Warte auf Spieler…";
 
     return;
+
   }
 
-  if (req.url === "/health") {
 
-    res.writeHead(200, {
-      "Content-Type": "text/plain; charset=utf-8"
-    });
+  if(gameState.phase==="finished"){
 
-    res.end("UNKNOWN server online");
-
-    return;
-  }
-
-  res.writeHead(404);
-  res.end("Not found");
-});
-
-const wss = new WebSocketServer({
-  server
-});
-
-wss.on("connection", ws => {
-
-  let playerIndex = -1;
-
-  send(ws, {
-    type: "connected"
-  });
-
-  ws.on("message", raw => {
-
-    try {
-
-      const msg = JSON.parse(raw.toString());
-
-      // -------------------------
-      // LOBBY ERSTELLEN
-      // -------------------------
-
-      if (msg.type === "create") {
-
-        if (game.phase !== "lobby") {
-          send(ws, {
-            type: "error",
-            message: "Das Spiel läuft bereits."
-          });
-          return;
-        }
-
-        if (game.players.length >= 4) {
-          send(ws, {
-            type: "error",
-            message: "Das Spiel ist bereits voll."
-          });
-          return;
-        }
-
-        const player = {
-
-          id: crypto.randomUUID(),
-
-          name:
-            msg.name ||
-            `Spieler ${game.players.length + 1}`,
-
-          ws,
-
-          connected:true,
-
-          secret:null,
-
-          hand:[],
-
-          related:[],
-
-          notRelated:[],
-
-          relatedFlipped:false,
-
-          notRelatedFlipped:false
-
-        };
-
-        game.players.push(player);
-
-        playerIndex =
-          game.players.length - 1;
-
-        send(ws, {
-          type:"room",
-          room:"UNKNOWN"
-        });
-
-        broadcast();
-
-        return;
-      }
-
-      // -------------------------
-      // LOBBY BEITRETEN
-      // -------------------------
-
-      if (msg.type === "join") {
-
-        if (game.phase !== "lobby") {
-
-          send(ws, {
-            type:"error",
-            message:"Das Spiel läuft bereits."
-          });
-
-          return;
-        }
-
-        if (game.players.length >= 4) {
-
-          send(ws, {
-            type:"error",
-            message:"Das Spiel ist bereits voll."
-          });
-
-          return;
-        }
-
-        const player = {
-
-          id:crypto.randomUUID(),
-
-          name:
-            msg.name ||
-            `Spieler ${game.players.length + 1}`,
-
-          ws,
-
-          connected:true,
-
-          secret:null,
-
-          hand:[],
-
-          related:[],
-
-          notRelated:[],
-
-          relatedFlipped:false,
-
-          notRelatedFlipped:false
-
-        };
-
-        game.players.push(player);
-
-        playerIndex =
-          game.players.length - 1;
-
-        send(ws, {
-          type:"room",
-          room:"UNKNOWN"
-        });
-
-        broadcast();
-
-        return;
-      }
-
-      // -------------------------
-      // SPIEL STARTEN
-      // -------------------------
-
-      if (msg.type === "start") {
-
-        if (game.phase !== "lobby") {
-          return;
-        }
-
-        if (game.players.length < 2) {
-
-          send(ws, {
-            type:"error",
-            message:"Mindestens 2 Spieler werden benötigt."
-          });
-
-          return;
-        }
-
-        startGame(game);
-
-        broadcast();
-
-        return;
-      }
-
-      // -------------------------
-      // KARTE SPIELEN
-      // -------------------------
-
-      if (msg.type === "play") {
-
-        if (game.phase !== "playing") {
-          return;
-        }
-
-        if (game.pending) {
-          return;
-        }
-
-        if (playerIndex !== game.current) {
-          return;
-        }
-
-        const player =
-          game.players[playerIndex];
-
-        const cardIndex =
-          Number(msg.cardIndex);
-
-        if (
-          !Number.isInteger(cardIndex) ||
-          cardIndex < 0 ||
-          cardIndex >= player.hand.length
-        ) {
-          return;
-        }
-
-        const card =
-          player.hand.splice(
-            cardIndex,
-            1
-          )[0];
-
-        game.pending = {
-
-          type:"play",
-
-          player:playerIndex,
-
-          card,
-
-          votes:[]
-
-        };
-
-        broadcast();
-
-        return;
-      }
-
-      // -------------------------
-      // RELATED / NOT RELATED
-      // -------------------------
-
-      if (msg.type === "vote") {
-
-        if (
-          game.phase !== "playing" ||
-          !game.pending ||
-          game.pending.type !== "play"
-        ) {
-          return;
-        }
-
-        const voter = playerIndex;
-
-        // Der aktive Spieler darf nicht abstimmen.
-        if (voter === game.pending.player) {
-          return;
-        }
-
-        // Jeder Spieler darf nur einmal abstimmen.
-        if (
-          game.pending.votes.some(
-            v => v.player === voter
-          )
-        ) {
-          return;
-        }
-
-        if (
-          msg.choice !== "related" &&
-          msg.choice !== "notRelated"
-        ) {
-          return;
-        }
-
-        game.pending.votes.push({
-          player:voter,
-          choice:msg.choice
-        });
-
-        const required =
-          game.players.length - 1;
-
-        if (
-          game.pending.votes.length >= required
-        ) {
-          finishPlay();
-        } else {
-          broadcast();
-        }
-
-        return;
-      }
-
-      // -------------------------
-      // IDENTITÄT RATEN
-      // -------------------------
-
-      if (msg.type === "guess") {
-
-        if (game.phase !== "playing") {
-          return;
-        }
-
-        if (game.pending) {
-          return;
-        }
-
-        if (playerIndex !== game.current) {
-          return;
-        }
-
-        const player =
-          game.players[playerIndex];
-
-        if (
-          sameCard(
-            player.secret,
-            msg.guess
-          )
-        ) {
-
-          game.phase = "finished";
-
-          game.winner = player.id;
-
-          broadcast();
-
-          return;
-        }
-
-        game.pending = {
-
-          type:"guess",
-
-          player:playerIndex,
-
-          guess:msg.guess
-
-        };
-
-        broadcast();
-
-        return;
-      }
-
-      // -------------------------
-      // STAPEL NACH FALSCHEM TIPP
-      // -------------------------
-
-      if (msg.type === "flip") {
-
-        if (
-          !game.pending ||
-          game.pending.type !== "guess"
-        ) {
-          return;
-        }
-
-        if (
-          game.pending.player !== playerIndex
-        ) {
-          return;
-        }
-
-        const player =
-          game.players[playerIndex];
-
-        if (msg.pile === "related") {
-
-          player.relatedFlipped = true;
-
-        } else if (
-          msg.pile === "notRelated"
-        ) {
-
-          player.notRelatedFlipped = true;
-
-        } else {
-
-          return;
-
-        }
-
-        game.pending = null;
-
-        nextTurn();
-
-        broadcast();
-
-        return;
-      }
-
-    } catch (error) {
-
-      console.error(
-        "Message error:",
-        error
+    const winner=
+      gameState.players.find(
+        p=>p.id===gameState.winner
       );
 
-    }
+    $("status").textContent=
+      winner
+        ? winner.name+" gewinnt! 🏆"
+        : "Spiel beendet.";
 
-  });
-
-  ws.on("close", () => {
-
-    if (
-      playerIndex >= 0 &&
-      game.players[playerIndex]
-    ) {
-
-      game.players[playerIndex].connected = false;
-
-      game.players[playerIndex].ws = null;
-
-      broadcast();
-
-    }
-
-  });
-
-});
-
-server.listen(
-  PORT,
-  "0.0.0.0",
-  () => {
-
-    console.log(
-      `UNKNOWN server listening on port ${PORT}`
-    );
+    return;
 
   }
-);
+
+
+  if(gameState.pending){
+
+    if(gameState.pending.type==="play"){
+
+      if(myIndex===gameState.pending.player){
+
+        $("status").textContent=
+          "Die anderen Spieler beurteilen deine Karte.";
+
+      }else{
+
+        $("status").textContent=
+          "Beurteile die gespielte Karte.";
+
+      }
+
+      return;
+
+    }
+
+
+    if(gameState.pending.type==="guess"){
+
+      if(myIndex===gameState.pending.player){
+
+        $("status").textContent=
+          "Wähle einen Stapel zum Umdrehen.";
+
+      }else{
+
+        $("status").textContent=
+          "Der Tipp war falsch.";
+
+      }
+
+      return;
+
+    }
+
+  }
+
+
+  if(gameState.current===myIndex){
+
+    $("status").textContent=
+      "DU BIST DRAN";
+
+  }else{
+
+    const p=
+      gameState.players[gameState.current];
+
+    $("status").textContent=
+      p.name+" ist dran.";
+
+  }
+
+}
+
+
+function renderHand(){
+
+  const player=
+    gameState.players[myIndex];
+
+  if(!player){
+
+    return;
+
+  }
+
+
+  $("hand").innerHTML=
+    (player.hand||[]).map((card,i)=>`
+
+      <div
+        class="card playcard"
+        onclick="playCard(${i})"
+      >
+
+        <strong>
+          ${escapeHtml(card.character)}
+        </strong>
+
+        <span>
+          🎩 ${escapeHtml(card.accessory)}
+        </span>
+
+        <span>
+          📍 ${escapeHtml(card.location)}
+        </span>
+
+        ${
+          gameState.current===myIndex &&
+          !gameState.pending &&
+          gameState.phase==="playing"
+            ? "<br><b>ANTIPPEN ZUM SPIELEN</b>"
+            : ""
+        }
+
+      </div>
+
+    `).join("");
+
+}
+
+
+function renderPiles(){
+
+  const player=
+    gameState.players[myIndex];
+
+  if(!player){
+
+    return;
+
+  }
+
+
+  $("relatedCount").textContent=
+    player.relatedCount+" Karten"+
+    (player.relatedFlipped
+      ? " · VERDECKT"
+      : "");
+
+  $("notRelatedCount").textContent=
+    player.notRelatedCount+" Karten"+
+    (player.notRelatedFlipped
+      ? " · VERDECKT"
+      : "");
+
+}
+
+
+function renderVote(){
+
+  const pending=
+    gameState.pending;
+
+  if(
+    !pending ||
+    pending.type!=="play"
+  ){
+
+    $("voteSection").classList.add("hidden");
+
+    return;
+
+  }
+
+
+  if(myIndex===pending.player){
+
+    $("voteSection").classList.add("hidden");
+
+    return;
+
+  }
+
+
+  $("voteSection").classList.remove("hidden");
+
+
+  const card=
+    pending.card;
+
+
+  $("playedCard").innerHTML=`
+
+    <div class="card">
+
+      <strong>
+        ${escapeHtml(card.character)}
+      </strong>
+
+      <span>
+        🎩 ${escapeHtml(card.accessory)}
+      </span>
+
+      <span>
+        📍 ${escapeHtml(card.location)}
+      </span>
+
+    </div>
+
+  `;
+
+
+  const voted=
+    pending.votes.some(
+      v=>v.player===myIndex
+    );
+
+
+  $("voteInfo").textContent=
+    voted
+      ? "Deine Bewertung wurde abgegeben."
+      : "Teile den anderen Spielern mit, ob die Karte RELATED oder NOT RELATED ist.";
+
+}
+
+
+function vote(choice){
+
+  if(!gameState.pending){
+
+    return;
+
+  }
+
+
+  send({
+    type:"vote",
+    choice
+  });
+
+}
+
+
+function renderGuess(){
+
+  const visible=
+    gameState.phase==="playing" &&
+    !gameState.pending &&
+    gameState.current===myIndex;
+
+
+  $("guessSection").classList.toggle(
+    "hidden",
+    !visible
+  );
+
+
+  if(!visible){
+
+    return;
+
+  }
+
+
+  fillSelect(
+    "guessCharacter",
+    CHARACTERS
+  );
+
+  fillSelect(
+    "guessAccessory",
+    ACCESSORIES
+  );
+
+  fillSelect(
+    "guessLocation",
+    LOCATIONS
+  );
+
+}
+
+
+function fillSelect(id,values){
+
+  const select=$(id);
+
+  if(select.options.length===values.length){
+
+    return;
+
+  }
+
+
+  select.innerHTML=
+    values.map((value,i)=>
+      `<option value="${i}">
+        ${value}
+      </option>`
+    ).join("");
+
+}
+
+
+function guessIdentity(){
+
+  send({
+
+    type:"guess",
+
+    guess:{
+      c:Number(
+        $("guessCharacter").value
+      ),
+
+      a:Number(
+        $("guessAccessory").value
+      ),
+
+      l:Number(
+        $("guessLocation").value
+      )
+
+    }
+
+  });
+
+}
+
+
+function renderFlip(){
+
+  const show=
+    gameState.pending &&
+    gameState.pending.type==="guess" &&
+    gameState.pending.player===myIndex;
+
+  $("flipSection").classList.toggle(
+    "hidden",
+    !show
+  );
+
+}
+
+
+function flipPile(pile){
+
+  send({
+    type:"flip",
+    pile
+  });
+
+}
+
+
+function playCard(index){
+
+  if(gameState.phase!=="playing"){
+    return;
+  }
+
+  if(gameState.current!==myIndex){
+    return;
+  }
+
+  if(gameState.pending){
+    return;
+  }
+
+  send({
+    type:"play",
+    cardIndex:index
+  });
+
+}
+
+
+function escapeHtml(text){
+
+  return String(text)
+    .replaceAll("&","&amp;")
+    .replaceAll("<","&lt;")
+    .replaceAll(">","&gt;")
+    .replaceAll('"',"&quot;")
+    .replaceAll("'","&#039;");
+
+}
+
+</script>
+
+</body>
+</html>
