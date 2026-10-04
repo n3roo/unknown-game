@@ -1,96 +1,264 @@
-
 import http from "node:http";
-import crypto from "node:crypto";
-import {WebSocketServer} from "ws";
-import {createGame,startGame,related,publicState} from "./game.js";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { WebSocketServer } from "ws";
 
-const games=new Map();
+import {
+  createGame,
+  startGame,
+  related,
+  publicState
+} from "./game.js";
 
-function code(){return Math.random().toString(36).slice(2,7).toUpperCase()}
-function send(ws,msg){if(ws.readyState===1)ws.send(JSON.stringify(msg))}
-function broadcast(room){
-  for(const p of room.game.players) if(p.ws) send(p.ws,{type:"state",state:publicState(room.game,p.id)});
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const PORT = process.env.PORT || 10000;
+
+const game = createGame();
+
+function send(ws, data) {
+  ws.send(JSON.stringify(data));
 }
-function getRoom(ws){return [...games.values()].find(r=>r.game.players.some(p=>p.ws===ws))}
 
-const server=http.createServer((req,res)=>{
-  if(req.url==="/"||req.url==="/health"){
-    res.writeHead(200,{"content-type":"text/plain; charset=utf-8"});
+function broadcast() {
+  game.players.forEach((player, index) => {
+    if (player.ws && player.connected) {
+      send(player.ws, {
+        type: "state",
+        state: publicState(game, index)
+      });
+    }
+  });
+}
+
+const server = http.createServer((req, res) => {
+  if (req.url === "/" || req.url === "/index.html") {
+    const html = fs.readFileSync(
+      path.join(__dirname, "index.html"),
+      "utf8"
+    );
+
+    res.writeHead(200, {
+      "Content-Type": "text/html; charset=utf-8"
+    });
+
+    res.end(html);
+    return;
+  }
+
+  if (req.url === "/health") {
+    res.writeHead(200, {
+      "Content-Type": "text/plain; charset=utf-8"
+    });
+
     res.end("UNKNOWN server online");
     return;
   }
-  res.writeHead(404);res.end();
-});
-const wss=new WebSocketServer({server});
 
-wss.on("connection",ws=>{
-  ws.on("message",raw=>{
-    let m;try{m=JSON.parse(raw)}catch{return}
-    if(m.type==="create"){
-      let c;do{c=code()}while(games.has(c));
-      const game=createGame(),id=0;
-      game.players.push({id,name:m.name||"Spieler 1",ws,connected:true});
-      games.set(c,{game});
-      send(ws,{type:"joined",code:c,playerId:id});
-      broadcast(games.get(c));return;
-    }
-    if(m.type==="join"){
-      const room=games.get(String(m.code||"").toUpperCase());
-      if(!room)return send(ws,{type:"error",message:"Lobby nicht gefunden."});
-      if(room.game.players.length>=4)return send(ws,{type:"error",message:"Lobby ist voll."});
-      if(room.game.phase!=="lobby")return send(ws,{type:"error",message:"Spiel läuft bereits."});
-      const id=room.game.players.length;
-      room.game.players.push({id,name:m.name||`Spieler ${id+1}`,ws,connected:true});
-      send(ws,{type:"joined",code:String(m.code).toUpperCase(),playerId:id});
-      broadcast(room);return;
-    }
-    const room=getRoom(ws);if(!room)return;
-    const game=room.game;
-    const me=game.players.find(p=>p.ws===ws);if(!me)return;
-
-    if(m.type==="start"){
-      if(game.players.length<2)return send(ws,{type:"error",message:"Mindestens 2 Spieler."});
-      if(me.id!==0)return;
-      startGame(game);broadcast(room);return;
-    }
-    if(game.phase!=="playing"||game.current!==me.id)return;
-
-    if(m.type==="play"){
-      const card=me.hand[m.index];if(!card)return;
-      me.hand.splice(m.index,1);
-      game.pending={player:me.id,card};
-      game.answer=null;
-      broadcast(room);return;
-    }
-    if(m.type==="resolve"){
-      if(!game.pending||game.pending.player!==me.id)return;
-      const yes=related(game.pending.card,me.secret);
-      if(yes)me.related.push(game.pending.card);else me.notRelated.push(game.pending.card);
-      game.answer=yes?"RELATED":"NOT RELATED";
-      if(game.deck.length)me.hand.push(game.deck.pop());
-      game.pending=null;
-      game.current=(game.current+1)%game.players.length;
-      broadcast(room);return;
-    }
-    if(m.type==="guess"){
-      if(!me.secret)return;
-      const ok=m.c===me.secret.c&&m.a===me.secret.a&&m.l===me.secret.l;
-      if(ok){game.phase="finished";game.winner=me.id;broadcast(room);return}
-      game.pending={guess:true,player:me.id};game.answer="WRONG";broadcast(room);return;
-    }
-    if(m.type==="flip"){
-      if(!game.pending?.guess||game.pending.player!==me.id)return;
-      if(m.pile==="related")me.flipped="related";
-      if(m.pile==="notRelated")me.flipped="notRelated";
-      game.pending=null;game.current=(game.current+1)%game.players.length;broadcast(room);
-    }
-  });
-  ws.on("close",()=>{
-    const room=getRoom(ws);if(!room)return;
-    const p=room.game.players.find(p=>p.ws===ws);if(p)p.connected=false;
-    broadcast(room);
-  });
+  res.writeHead(404);
+  res.end("Not found");
 });
 
-const port=process.env.PORT||10000;
-server.listen(port,()=>console.log(`UNKNOWN listening on ${port}`));
+const wss = new WebSocketServer({ server });
+
+wss.on("connection", (ws) => {
+  let playerIndex = -1;
+
+  send(ws, {
+    type: "connected"
+  });
+
+  ws.on("message", (raw) => {
+    try {
+      const msg = JSON.parse(raw.toString());
+
+      if (msg.type === "create") {
+        if (game.players.length >= 4) {
+          send(ws, {
+            type: "error",
+            message: "Das Spiel ist bereits voll."
+          });
+          return;
+        }
+
+        const player = {
+          id: crypto.randomUUID(),
+          name: msg.name || `Spieler ${game.players.length + 1}`,
+          ws,
+          connected: true,
+          secret: null,
+          hand: [],
+          related: [],
+          notRelated: [],
+          flipped: null
+        };
+
+        game.players.push(player);
+        playerIndex = game.players.length - 1;
+
+        send(ws, {
+          type: "room",
+          room: "UNKNOWN"
+        });
+
+        broadcast();
+        return;
+      }
+
+      if (msg.type === "join") {
+        if (game.players.length >= 4) {
+          send(ws, {
+            type: "error",
+            message: "Das Spiel ist bereits voll."
+          });
+          return;
+        }
+
+        const player = {
+          id: crypto.randomUUID(),
+          name: msg.name || `Spieler ${game.players.length + 1}`,
+          ws,
+          connected: true,
+          secret: null,
+          hand: [],
+          related: [],
+          notRelated: [],
+          flipped: null
+        };
+
+        game.players.push(player);
+        playerIndex = game.players.length - 1;
+
+        send(ws, {
+          type: "room",
+          room: "UNKNOWN"
+        });
+
+        broadcast();
+        return;
+      }
+
+      if (msg.type === "start") {
+        if (game.players.length < 2) {
+          send(ws, {
+            type: "error",
+            message: "Mindestens 2 Spieler werden benötigt."
+          });
+          return;
+        }
+
+        if (game.phase !== "lobby") {
+          return;
+        }
+
+        startGame(game);
+        broadcast();
+        return;
+      }
+
+      if (msg.type === "play") {
+        if (game.phase !== "playing") return;
+        if (playerIndex !== game.current) return;
+
+        const player = game.players[playerIndex];
+        const cardIndex = Number(msg.cardIndex);
+
+        if (
+          !Number.isInteger(cardIndex) ||
+          cardIndex < 0 ||
+          cardIndex >= player.hand.length
+        ) {
+          return;
+        }
+
+        const card = player.hand.splice(cardIndex, 1)[0];
+
+        const isRelated = related(card, player.secret);
+
+        if (isRelated) {
+          player.related.push(card);
+        } else {
+          player.notRelated.push(card);
+        }
+
+        if (game.deck.length > 0) {
+          player.hand.push(game.deck.pop());
+        }
+
+        game.current =
+          (game.current + 1) % game.players.length;
+
+        broadcast();
+        return;
+      }
+
+      if (msg.type === "guess") {
+        if (game.phase !== "playing") return;
+        if (playerIndex !== game.current) return;
+
+        const player = game.players[playerIndex];
+
+        const guess = msg.guess;
+
+        const correct =
+          guess &&
+          guess.c === player.secret.c &&
+          guess.a === player.secret.a &&
+          guess.l === player.secret.l;
+
+        if (correct) {
+          game.phase = "finished";
+          game.winner = player.id;
+          broadcast();
+          return;
+        }
+
+        game.pending = {
+          player: playerIndex
+        };
+
+        broadcast();
+        return;
+      }
+
+      if (msg.type === "flip") {
+        if (!game.pending) return;
+        if (game.pending.player !== playerIndex) return;
+
+        const player = game.players[playerIndex];
+
+        if (msg.pile === "related") {
+          player.flipped = "related";
+        }
+
+        if (msg.pile === "notRelated") {
+          player.flipped = "notRelated";
+        }
+
+        game.pending = null;
+
+        game.current =
+          (game.current + 1) % game.players.length;
+
+        broadcast();
+        return;
+      }
+    } catch (error) {
+      console.error("Message error:", error);
+    }
+  });
+
+  ws.on("close", () => {
+    if (playerIndex >= 0 && game.players[playerIndex]) {
+      game.players[playerIndex].connected = false;
+      game.players[playerIndex].ws = null;
+      broadcast();
+    }
+  });
+});
+
+server.listen(PORT, "0.0.0.0", () => {
+  console.log(`UNKNOWN server listening on port ${PORT}`);
+});
