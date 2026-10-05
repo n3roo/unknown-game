@@ -537,6 +537,7 @@ function render(){
 }
 
 
+
 function renderPlayers(){
 
   $("players").innerHTML=
@@ -548,23 +549,41 @@ function renderPlayers(){
         ${i===myIndex?"me":""}
       ">
 
-        <strong>${escapeHtml(p.name)}</strong>
+        <div class="player-header">
+          <strong>${escapeHtml(p.name)}</strong>
+          ${i===myIndex
+            ? '<span class="player-tag">DU</span>'
+            : ''}
+        </div>
 
-        <br>
+        <div class="player-stats">
+          <span>🃏 ${p.handCount} Handkarten</span>
+        </div>
 
-        ${p.handCount} Handkarten
+        <div class="player-piles">
+          <div class="player-pile related-pile">
+            <span>🔗</span>
+            <span>Related</span>
+            <strong>${p.relatedCount}</strong>
+          </div>
 
-        <br>
+          <div class="player-pile not-related-pile">
+            <span>🚫</span>
+            <span>Not Related</span>
+            <strong>${p.notRelatedCount}</strong>
+          </div>
+        </div>
 
-        🔗 ${p.relatedCount}
-        &nbsp;
-        🚫 ${p.notRelatedCount}
+        ${i===gameState.current
+          ? '<div class="turn-indicator">● AM ZUG</div>'
+          : ''}
 
       </div>
 
     `).join("");
 
 }
+
 
 
 function renderStatus(){
