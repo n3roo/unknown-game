@@ -1,0 +1,19 @@
+[
+  { "id": "basecap", "name": "Basecap", "price": 100 },
+  { "id": "muetze", "name": "Pudelmütze", "price": 150 },
+  { "id": "partyhut", "name": "Partyhut", "price": 200 },
+  { "id": "cowboy", "name": "Cowboyhut", "price": 250 },
+  { "id": "fez", "name": "Fez", "price": 250 },
+  { "id": "koch", "name": "Kochmütze", "price": 300 },
+  { "id": "zylinder", "name": "Zylinder", "price": 350 },
+  { "id": "propeller", "name": "Propellerkappe", "price": 400 },
+  { "id": "pirat", "name": "Piratenhut", "price": 450 },
+  { "id": "wikinger", "name": "Wikingerhelm", "price": 500 },
+  { "id": "zauberer", "name": "Zaubererhut", "price": 600 },
+  { "id": "krone", "name": "Krone", "price": 1500 },
+  { "id": "liga_silber", "name": "Silber-Krone", "league": "silber" },
+  { "id": "liga_gold", "name": "Gold-Krone", "league": "gold" },
+  { "id": "liga_platin", "name": "Platin-Krone", "league": "platin" },
+  { "id": "liga_diamant", "name": "Diamant-Krone", "league": "diamant" },
+  { "id": "liga_meister", "name": "Meister-Krone", "league": "meister" }
+]

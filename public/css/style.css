@@ -785,3 +785,12 @@ body.room {
 .board .deck-n { position: relative; right: auto; bottom: auto; margin-top: 1.5cqw; }
 
 .board .deck-n small { font-size: 0; } .board .deck-n small::before { content: 'Stapel'; font-size: clamp(8px, 2.6cqw, 10px); }
+
+/* Gemalter Tisch (table.webp) */
+.board .table-surface {
+  left: -25cqw; right: auto; width: 150cqw; height: 150cqw; top: 22cqw; bottom: auto;
+  border-radius: 0; box-shadow: none;
+  background: url(../assets/ui/table.webp) center / 100% 100% no-repeat;
+  filter: drop-shadow(0 3cqw 5cqw rgba(0,0,0,.6));
+}
+.board .lantern { display: none; }
