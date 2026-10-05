@@ -1,0 +1,37 @@
+{
+  "shared": {
+    "accessories": [
+      { "id": "sombrero",     "name": "Sombrero",     "img": "assets/accessories/sombrero.png" },
+      { "id": "zylinder",     "name": "Zylinder",     "img": "assets/accessories/zylinder.png" },
+      { "id": "partyhut",     "name": "Partyhut",     "img": "assets/accessories/partyhut.png" },
+      { "id": "sonnenbrille", "name": "Sonnenbrille", "img": "assets/accessories/sonnenbrille.png" },
+      { "id": "kopfhoerer",   "name": "Kopfhörer",    "img": "assets/accessories/kopfhoerer.png" },
+      { "id": "kochmuetze",   "name": "Kochmütze",    "img": "assets/accessories/kochmuetze.png" },
+      { "id": "krone",        "name": "Krone",        "img": "assets/accessories/krone.png" }
+    ],
+    "locations": [
+      { "id": "buero",           "name": "Büro",            "img": "assets/locations/buero.png" },
+      { "id": "vulkan",          "name": "Vulkan",          "img": "assets/locations/vulkan.png" },
+      { "id": "strand",          "name": "Strand",          "img": "assets/locations/strand.png" },
+      { "id": "berge",           "name": "Berge",           "img": "assets/locations/berge.png" },
+      { "id": "weltraum",        "name": "Weltraum",        "img": "assets/locations/weltraum.png" },
+      { "id": "unterwasserwelt", "name": "Unterwasserwelt", "img": "assets/locations/unterwasserwelt.png" },
+      { "id": "nachtclub",       "name": "Nachtclub",       "img": "assets/locations/nachtclub.png" }
+    ]
+  },
+  "sets": [
+    {
+      "id": "western",
+      "name": "Wild West",
+      "characters": [
+        { "id": "revolverheldin", "name": "Revolverheldin", "img": "assets/characters/revolverheldin.png" },
+        { "id": "sheriff",        "name": "Sheriff",        "img": "assets/characters/sheriff.png" },
+        { "id": "goldgraeberin",  "name": "Goldgräberin",   "img": "assets/characters/goldgraeberin.png" },
+        { "id": "gefangener",     "name": "Gefangener",     "img": "assets/characters/gefangener.png" },
+        { "id": "banditin",       "name": "Banditin",       "img": "assets/characters/banditin.png" },
+        { "id": "saloonbesitzer", "name": "Saloonbesitzer", "img": "assets/characters/saloonbesitzer.png" },
+        { "id": "kopfgeldjaeger", "name": "Kopfgeldjäger",  "img": "assets/characters/kopfgeldjaeger.png" }
+      ]
+    }
+  ]
+}
