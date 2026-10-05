@@ -12,7 +12,7 @@ const crypto = require('node:crypto');
 const { WebSocketServer } = require('ws');
 const G = require('./lib/game');
 const E = require('./lib/economy');
-const { leagueOf } = require('./lib/rating');
+const { leagueOf, LEAGUES } = require('./lib/rating');
 const { Queue } = require('./lib/queue');
 const { createStore } = require('./lib/store');
 
@@ -148,7 +148,7 @@ async function loadProfile(secret) {
 const saveProfile = (p) => store.put(p).catch((err) => console.error('Profil speichern fehlgeschlagen:', err.message));
 
 function sendProfile(ws) {
-  if (ws.profile) send(ws, { type: 'profile', profile: E.selfView(ws.profile), store: store.kind });
+  if (ws.profile) send(ws, { type: 'profile', profile: E.selfView(ws.profile), store: store.kind, regions: E.REGIONS, leagues: LEAGUES });
 }
 
 /** Spielerdaten aus dem Profil in eine Partie übernehmen (Hut, Rating, Land). */

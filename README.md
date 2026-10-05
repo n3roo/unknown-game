@@ -24,3 +24,11 @@ Die 49 Karten entstehen automatisch: Ort = (Charakter + Accessoire) mod 7.
 
 ## Avatar-Bilder einbauen
 `public/assets/avatars/<id>.png` (IDs siehe avatars.json). Fehlt ein Bild, wird das Emoji gezeigt.
+
+## Ranked, Gold & Hüte
+
+- **Profil**: anonym, per Geräteschlüssel (localStorage, auch als „Wiederherstellungs-Code“ im Konto-Dialog). Gold, Hüte, Rang, Level.
+- **Gold**: Sieg 40 / Teilnahme 10 (max. 6 Gold-Partien pro Tag), Ranked Sieg 120 / Teilnahme 30, erster Sieg des Tages +60.
+- **Ranked**: Rating ab 1000 (Elo-Variante), Matchmaking 2–4 Spieler, Ligen Bronze → Meister mit einmaligen Belohnungen (Gold + Liga-Hut), Rangliste weltweit und pro Land.
+- **Hüte**: 12 kaufbare + 5 Liga-Hüte (`public/js/hats.js`, `public/data/hats.json`), Ankerpunkte je Avatar in `avatars.json` (`hat`).
+- **Speicher** (Umgebungsvariablen): `TURSO_URL` + `TURSO_TOKEN` (kostenlose Turso-DB, empfohlen für Render Free), oder `DATA_FILE=/pfad/profiles.json` (Datei, braucht persistenten Datenträger). Ohne beides: nur Arbeitsspeicher – Profile gehen beim Neustart verloren.

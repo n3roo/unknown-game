@@ -26,10 +26,29 @@
     reconnectDelay: 800,
     noReconnect: false,
     pingTimer: null,
-    ui: { drawer: null, marks: { c: {}, a: {}, l: {} }, sel: null, modal: null, guess: { sel: {} }, pickAvatar: false, hideEnd: false },
+    me: null, regions: [], leagues: [], storeKind: null, hatsDef: [], q: null, lb: null, ranked: false, rewards: null,
+    secret: null,
+    ui: { prevHat: null, lbScope: 'world', drawer: null, marks: { c: {}, a: {}, l: {} }, sel: null, modal: null, guess: { sel: {} }, pickAvatar: false, hideEnd: false },
   };
 
   /* ------------------------------------------------------ Helfer */
+
+  function deviceSecret() {
+    let sec = LS.get('unknown.secret');
+    if (!(typeof sec === 'string' && /^[0-9a-f]{32,64}$/.test(sec))) {
+      const b = new Uint8Array(24); crypto.getRandomValues(b);
+      sec = Array.from(b, (x) => x.toString(16).padStart(2, '0')).join('');
+      LS.set('unknown.secret', sec);
+    }
+    return sec;
+  }
+  const flag = (code) => (code && /^[A-Z]{2}$/.test(code) ? String.fromCodePoint(...[...code].map((c) => 0x1f1e6 + c.charCodeAt(0) - 65)) : '🌍');
+  let regionNames = null;
+  const regionName = (code) => { try { regionNames = regionNames || new Intl.DisplayNames(['de'], { type: 'region' }); return regionNames.of(code); } catch { return code; } };
+  const leagueDef = (id) => S.leagues.find((l) => l.id === id) || { id, name: id, icon: '🏅', min: 0 };
+  const hatDef = (id) => S.hatsDef.find((h) => h.id === id);
+  const leagueFor = (rating) => { let l = S.leagues[0] || { id: 'bronze', name: 'Bronze', icon: '🥉', min: 0 }; for (const x of S.leagues) if (rating >= x.min) l = x; return l; };
+
 
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const dec = (id) => { const c = Math.floor(id / N); const a = id % N; return { c, a, l: (c + a) % N }; };
@@ -94,9 +113,14 @@
     const a = avatarDef(id);
     return `<span class="avatar" style="--c:${esc(a.color)};--s:${size}px" title="${esc(a.name)}">${a.emoji}<img src="assets/avatars/${esc(a.id)}_head.png" alt="" loading="lazy" onerror="this.remove()"></span>`;
   }
-  function figHTML(id, cls = '') {
+  function hatHTML(av, hat) {
+    if (!hat || !window.HATS || !window.HATS[hat] || !av.hat) return '';
+    const h = av.hat;
+    return `<span class="hat" style="left:${h.x}%;top:${h.y}%;width:${h.w}%">${window.HATS[hat]}</span>`;
+  }
+  function figHTML(id, cls = '', hat = null) {
     const a = avatarDef(id);
-    return `<span class="fig ${cls}"><b aria-hidden="true">${a.emoji}</b><img src="assets/avatars/${esc(a.id)}_cut.png" alt="${esc(a.name)}" onerror="this.remove()"></span>`;
+    return `<span class="fig ${cls}"><b aria-hidden="true">${a.emoji}</b><span class="fb" style="--ar:${a.ar || 1}"><img src="assets/avatars/${esc(a.id)}_cut.png" alt="${esc(a.name)}" onerror="this.remove()">${hatHTML(a, hat)}</span></span>`;
   }
   const LOGO = (cls = '') => `<img class="logo-img ${cls}" src="assets/logo.png" alt="UNKNOWN" draggable="false">`;
   function avatarPicker(selected, taken = []) {
@@ -114,6 +138,9 @@
     else toast('Keine Verbindung. Einen Moment …', true);
   }
 
+  function guessRegion() { const m = /[-_]([A-Za-z]{2})\b/.exec(navigator.language || ''); return m ? m[1].toUpperCase() : 'DE'; }
+  let qTimer = null;
+
   function connect() {
     const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
     const ws = new WebSocket(`${proto}//${location.host}`);
@@ -121,6 +148,7 @@
     ws.onopen = () => {
       S.open = true;
       S.reconnectDelay = 800;
+      ws.send(JSON.stringify({ type: 'hello', secret: deviceSecret(), init: { name: S.profile.name || undefined, avatar: S.profile.avatar || undefined, region: guessRegion() } }));
       if (S.session) ws.send(JSON.stringify({ type: 'rejoin', code: S.session.code, token: S.session.token }));
       for (const m of S.queue.splice(0)) ws.send(JSON.stringify(m));
       clearInterval(S.pingTimer);
@@ -154,14 +182,30 @@
   function handle(m) {
     switch (m.type) {
       case 'joined':
+        S.q = null; if (S.ui.modal && ['ranked', 'wardrobe', 'leaderboard', 'account'].includes(S.ui.modal.type)) S.ui.modal = null;
         S.session = { code: m.code, token: m.token, playerId: m.playerId };
         LS.set('unknown.session', S.session);
         if (new URLSearchParams(location.search).has('code')) history.replaceState(null, '', location.pathname);
         break;
       case 'state':
-        S.st = m.state; S.code = m.code; S.setId = m.setId;
+        S.st = m.state; S.code = m.code; S.setId = m.setId; S.ranked = !!m.ranked; S.rewards = m.rewards || null;
         if (m.state.phase !== 'finished') S.ui.hideEnd = false;
         render();
+        break;
+      case 'profile':
+        S.me = m.profile; S.storeKind = m.store; if (m.regions) S.regions = m.regions; if (m.leagues) S.leagues = m.leagues;
+        if (!S.profile.name) { S.profile.name = S.me.name; saveProfile(); }
+        if (S.me.avatar && !S.st) { S.profile.avatar = S.me.avatar; saveProfile(); }
+        if (!S.st || S.ui.modal) { if (!S.st) render(); else renderModals(); }
+        break;
+      case 'queue':
+        S.q = m.status === 'searching' ? { since: m.since || (S.q && S.q.since) || Date.now(), size: m.size } : null;
+        clearInterval(qTimer);
+        if (S.q) qTimer = setInterval(() => { const el = document.getElementById('q-timer'); if (el) el.textContent = Math.floor((Date.now() - S.q.since) / 1000) + ' s'; }, 1000);
+        if (S.ui.modal && S.ui.modal.type === 'ranked') renderModals();
+        break;
+      case 'leaderboard':
+        S.lb = m; if (S.ui.modal && S.ui.modal.type === 'leaderboard') renderModals();
         break;
       case 'error':
         toast(m.message, true);
@@ -202,16 +246,24 @@
     const prefill = (new URLSearchParams(location.search).get('code') || '').toUpperCase().slice(0, 4);
     if (!S.data.avatars.some((a) => a.id === S.profile.avatar)) S.profile.avatar = S.data.avatars[0].id;
     const av = avatarDef(S.profile.avatar);
+    const me = S.me;
+    const lg = me ? leagueFor(me.rating) : null;
     $app.innerHTML = `
+      <div class="chips">
+        <button class="chip" data-act="wardrobe" aria-label="Gold"><i>🪙</i><b>${me ? me.gold : '–'}</b></button>
+        <button class="chip" data-act="ranked" aria-label="Rang"><i>${lg ? lg.icon : '🏅'}</i><b>${me ? me.rating : '–'}</b></button>
+        <button class="chip" data-act="account" aria-label="Konto"><i>⭐</i><b>Lv ${me ? me.level : 1}</b></button>
+      </div>
       <h1 class="logo-h">${LOGO()}</h1>
       <div class="home-top">
-        <div class="hero" id="hero">${figHTML(S.profile.avatar, 'hero-fig')}</div>
+        <div class="hero" id="hero">${figHTML(S.profile.avatar, 'hero-fig', me && me.hat)}</div>
         <div class="profile">
           <label class="field"><span>Dein Name</span>
             <input id="in-name" type="text" maxlength="16" autocomplete="nickname" placeholder="z. B. Mia" value="${esc(S.profile.name)}"></label>
           <p class="tagline" style="margin:0">Alle sehen, wer du bist.<br>Nur du nicht.</p>
         </div>
       </div>
+      <button class="tile-big ranked" data-act="ranked"><span class="tb-txt"><b>Ranked</b><small>${lg ? `${lg.icon} ${lg.name} · ${me.rating} Punkte` : 'Steige in der Rangliste auf'}</small></span><i>›</i></button>
       <button class="tile-big play" data-act="create"><span class="tb-txt"><b>Lobby erstellen</b><small>Spiel mit Freunden · 2–4 Spieler</small></span><i>›</i></button>
       <div class="tile-big join">
         <span class="tb-txt"><b>Beitreten</b><small>Code von deinen Freunden</small></span>
@@ -223,10 +275,10 @@
         ${avatarPicker(S.profile.avatar)}
       </section>
       <div class="tiles">
+        <button class="tile" data-act="wardrobe"><b>Hüte</b><span>Kaufen &amp; anziehen</span><em>🎩</em></button>
+        <button class="tile" data-act="leaderboard"><b>Rangliste</b><span>Weltweit &amp; Land</span><em>🏆</em></button>
         <button class="tile" data-act="collection"><b>Deine Karten</b><span>${setDef().name} · 49</span><em>🃏</em></button>
         <button class="tile" data-act="rules"><b>Spielregeln</b><span>Kurz erklärt</span><em>📜</em></button>
-        <div class="tile soon"><b>Kopfbedeckung</b><span>Bald verfügbar</span><em>🎩</em></div>
-        <div class="tile soon"><b>Shop</b><span>Bald verfügbar</span><em>🛒</em></div>
       </div>
       ${S.open ? '' : '<p class="hint center" id="conn-hint">Verbindung wird aufgebaut …</p>'}`;
   }
@@ -300,17 +352,17 @@
     if (p.out) tag = 'raus';
     else if (!p.connected) tag = 'getrennt';
     else if (st.phase === 'clues' && !p.clueGiven) tag = 'überlegt';
-    const plate = `<div class="s3-plate"><span class="nm">${esc(isMe ? 'Du' : p.name)}</span><span class="pips" title="Falsche Tipps">${pips}</span>${tag ? `<em>${tag}</em>` : ''}</div>`;
+    const plate = `<div class="s3-plate"><span class="nm">${S.ranked && p.region ? `<i class="fl">${flag(p.region)}</i>` : ''}${esc(isMe ? 'Du' : p.name)}</span><span class="pips" title="Falsche Tipps">${pips}</span>${tag ? `<em>${tag}</em>` : ''}</div>`;
     if (isMe) {
       return `<div class="s3 me ${turn ? 'turn' : ''} ${p.out ? 'out' : ''}">
         <div class="me-side">${pileStack(p, 'related')}</div>
-        <div class="me-mid">${secret}<div class="me-bust">${figHTML(p.avatar)}</div>${plate}</div>
+        <div class="me-mid">${secret}<div class="me-bust">${figHTML(p.avatar, '', p.hat)}</div>${plate}</div>
         <div class="me-side">${pileStack(p, 'notRelated')}</div>
       </div>`;
     }
     return `<div class="s3 opp ${turn ? 'turn' : ''} ${p.out ? 'out' : ''}" style="left:${pos[0]}%;top:${pos[1]}cqw">
       ${secret}
-      <div class="s3-fig">${figHTML(p.avatar)}</div>
+      <div class="s3-fig">${figHTML(p.avatar, '', p.hat)}</div>
       ${plate}
       <div class="s3-piles">${pileStack(p, 'related')}${pileStack(p, 'notRelated')}</div>
     </div>`;
@@ -559,9 +611,13 @@
       else if (m.type === 'zoom') html = zoomHTML(m.id);
       else if (m.type === 'collection') html = collectionHTML();
       else if (m.type === 'pile') html = pileHTML(m.pid);
+      else if (m.type === 'ranked') html = rankedHTML();
+      else if (m.type === 'wardrobe') html = wardrobeHTML();
+      else if (m.type === 'leaderboard') html = leaderboardHTML();
+      else if (m.type === 'account') html = accountHTML();
       else if (m.type === 'guess') html = guessHTML();
       else if (m.type === 'leave') {
-        html = `<h2>Spiel verlassen?</h2><p>${st && st.phase === 'lobby' ? 'Du verlässt die Lobby.' : 'Du scheidest aus der laufenden Partie aus.'}</p>
+        html = `<h2>Spiel verlassen?</h2><p>${st && st.phase === 'lobby' ? 'Du verlässt die Lobby.' : S.ranked ? 'In einer Ranked-Partie zählt das als Niederlage: −20 Punkte.' : 'Du scheidest aus der laufenden Partie aus.'}</p>
           <div class="actions"><button class="btn" data-act="close">Bleiben</button><button class="btn no" data-act="leaveconfirm">Verlassen</button></div>`;
       }
     }
@@ -639,13 +695,106 @@
     const isHost = st.hostId === st.youId;
     const title = w ? (w.id === st.youId ? '🏆 Du hast gewonnen!' : `🏆 ${esc(w.name)} gewinnt!`) : 'Niemand hat gewonnen.';
     return `<div class="winner"><div class="big">${title}</div>
+      ${rewardsHTML()}
       <p class="muted" style="margin:0">So sahen die Geheimkarten aus:</p>
       <div class="reveal" style="--n:${Math.min(st.players.length, 4)}">${st.players.map((p) =>
         `<div class="p">${avatarHTML(p.avatar, 30)}<span>${esc(p.name)}</span><button class="card-btn" data-act="zoom" data-id="${p.secret}">${cardHTML(p.secret)}</button></div>`).join('')}</div>
       <div class="stack">
-        ${isHost ? '<button class="btn primary" data-act="rematch">Neue Runde</button>' : '<p class="muted center" style="margin:0">Der Host startet die nächste Runde.</p>'}
+        ${S.ranked ? '<button class="btn primary" data-act="rankedagain">Nochmal suchen</button>' : isHost ? '<button class="btn primary" data-act="rematch">Neue Runde</button>' : '<p class="muted center" style="margin:0">Der Host startet die nächste Runde.</p>'}
         <div class="row"><button class="btn ghost" data-act="hideend">Tisch ansehen</button><button class="btn ghost" data-act="leaveconfirm">Verlassen</button></div>
       </div></div>`;
+  }
+
+
+  /* ------------------------------------------- Profil, Ranked, Hüte */
+
+  function rewardsHTML() {
+    const r = S.rewards;
+    if (!r) return '';
+    const rows = [];
+    if (r.gold) rows.push(`<li><i>🪙</i><span>Gold${r.dailyBonus ? ` (inkl. ${r.dailyBonus} Tagesbonus)` : ''}</span><b>+${r.gold - (r.bonusGold || 0)}</b></li>`);
+    else if (r.capped) rows.push('<li><i>🪙</i><span>Tageslimit für Gold erreicht</span><b>–</b></li>');
+    if (r.ranked && r.ratingBefore !== undefined) {
+      const d = r.ratingDelta;
+      rows.push(`<li><i>${leagueFor(r.ratingAfter).icon}</i><span>Rang ${r.ratingBefore} → ${r.ratingAfter}</span><b class="${d >= 0 ? 'up' : 'down'}">${d >= 0 ? '+' : ''}${d}</b></li>`);
+    }
+    if (r.leagueUp) rows.push(`<li class="hl"><i>${leagueDef(r.leagueUp).icon}</i><span>Aufstieg in ${esc(leagueDef(r.leagueUp).name)}!</span><b>+${r.bonusGold} 🪙</b></li>`);
+    if (r.newHat) rows.push(`<li class="hl"><i class="mini-hat">${(window.HATS || {})[r.newHat] || '🎩'}</i><span>Neuer Hut: ${esc((hatDef(r.newHat) || {}).name || '')}</span><b>NEU</b></li>`);
+    rows.push(`<li><i>✨</i><span>Erfahrung</span><b>+${r.xp} XP</b></li>`);
+    if (r.levelUp) rows.push(`<li class="hl"><i>⭐</i><span>Level ${r.levelUp} erreicht!</span><b></b></li>`);
+    return `<ul class="rewards">${rows.join('')}</ul>`;
+  }
+
+  function rankedHTML() {
+    const me = S.me;
+    if (!me) return '<p>Profil wird geladen …</p><button class="btn" data-act="close">Schließen</button>';
+    const lg = leagueFor(me.rating);
+    const nx = S.leagues.find((l) => l.min > me.rating);
+    const pct = nx ? Math.max(0, Math.min(100, ((me.rating - lg.min) / (nx.min - lg.min)) * 100)) : 100;
+    const searching = !!S.q;
+    return `<div class="rk-head"><div class="rk-badge">${lg.icon}</div><div><h2 style="margin:0">${esc(lg.name)}</h2><p class="muted" style="margin:0">${me.rating} Punkte · ${me.rankedWins}/${me.rankedPlayed} Siege</p></div></div>
+      <div class="bar"><i style="width:${pct}%"></i></div>
+      <p class="hint" style="margin:4px 0 10px">${nx ? `Noch ${nx.min - me.rating} Punkte bis ${nx.icon} ${esc(nx.name)}` : 'Höchste Liga erreicht!'}</p>
+      <label class="field"><span>Dein Land (für die Länderrangliste)</span>
+        <select id="sel-region" data-act="noop">${S.regions.map((c) => `<option value="${c}" ${c === me.region ? 'selected' : ''}>${flag(c)} ${esc(regionName(c))}</option>`).join('')}</select></label>
+      ${searching
+        ? `<div class="searching"><span class="spin"></span><div><b>Suche Gegner …</b><br><span class="muted">${S.q.size || 1} in der Warteschlange · <span id="q-timer">${Math.floor((Date.now() - S.q.since) / 1000)} s</span></span></div></div>
+           <button class="btn ghost" data-act="rankedleave">Suche abbrechen</button>`
+        : '<button class="btn primary" data-act="rankedjoin">Gegner suchen</button><p class="hint center" style="margin:6px 0 0">2–4 Spieler · Sieg: +120 🪙 · Teilnahme: +30 🪙</p>'}
+      <h3 style="margin:14px 0 6px">Liga-Belohnungen</h3>
+      <ul class="leagues">${S.leagues.map((l) => `<li class="${me.rating >= l.min ? 'got' : ''}"><i>${l.icon}</i><span>${esc(l.name)} <small>ab ${l.min}</small></span><b>${l.gold ? `+${l.gold} 🪙` : ''}${l.hat ? ` <span class="mini-hat">${(window.HATS || {})[l.hat] || ''}</span>` : ''}</b></li>`).join('')}</ul>
+      <button class="btn ghost" data-act="leaderboard">Rangliste ansehen</button>
+      <button class="btn" data-act="close">Schließen</button>`;
+  }
+
+  function leaderboardHTML() {
+    const lb = S.lb; const scope = S.ui.lbScope;
+    const tabs = `<div class="tabs"><button data-act="lbscope" data-scope="world" aria-pressed="${scope === 'world'}">🌍 Weltweit</button><button data-act="lbscope" data-scope="region" aria-pressed="${scope === 'region'}">${flag(S.me && S.me.region)} Mein Land</button></div>`;
+    let body = '<p class="muted center">Lade …</p>';
+    if (lb && lb.scope === scope) {
+      body = lb.rows.length ? `<ol class="lb">${lb.rows.map((r) => `<li class="${r.you ? 'you' : ''}"><em>${r.rank <= 3 ? ['🥇', '🥈', '🥉'][r.rank - 1] : r.rank}</em><span class="lb-av">${avatarHTML(r.avatar, 32)}</span><span class="lb-n"><b>${flag(r.region)} ${esc(r.name)}</b><small>${leagueDef(r.league).icon} ${esc(leagueDef(r.league).name)} · Lv ${r.level}</small></span><strong>${r.rating}</strong></li>`).join('')}</ol>`
+        : '<p class="muted center">Noch niemand in dieser Rangliste. Spiel Ranked und sei der Erste!</p>';
+      if (lb.you) body += `<p class="hint center">Dein Platz: <b>${lb.you.rank}</b> (${lb.you.rating} Punkte)</p>`;
+    }
+    return `<h2>Rangliste</h2>${tabs}${body}<button class="btn" data-act="close">Schließen</button>`;
+  }
+
+  function wardrobeHTML() {
+    const me = S.me;
+    if (!me) return '<p>Profil wird geladen …</p><button class="btn" data-act="close">Schließen</button>';
+    const prev = S.ui.prevHat !== undefined && S.ui.prevHat !== '__none' ? S.ui.prevHat : me.hat;
+    const sel = prev ? hatDef(prev) : null;
+    const owned = (id) => me.hats.includes(id);
+    let action = '';
+    if (!sel) action = me.hat ? '<button class="btn" data-act="equip" data-hat="">Hut ausziehen</button>' : '<p class="hint center">Wähle einen Hut zur Vorschau.</p>';
+    else if (owned(sel.id)) action = me.hat === sel.id ? '<button class="btn" data-act="equip" data-hat="">Hut ausziehen</button>' : `<button class="btn primary" data-act="equip" data-hat="${sel.id}">Anziehen</button>`;
+    else if (sel.league) action = `<p class="hint center">Diesen Hut bekommst du beim Aufstieg in die ${esc(leagueDef(sel.league).name)}-Liga.</p>`;
+    else action = `<button class="btn primary" data-act="buy" data-hat="${sel.id}" ${me.gold < sel.price ? 'disabled' : ''}>Kaufen · ${sel.price} 🪙</button>${me.gold < sel.price ? `<p class="hint center">Dir fehlen ${sel.price - me.gold} Gold. Gewinne Runden, um Gold zu verdienen.</p>` : ''}`;
+    const item = (h) => `<button class="hat-item ${prev === h.id ? 'sel' : ''} ${owned(h.id) ? 'own' : ''}" data-act="prevhat" data-hat="${h.id}" aria-label="${esc(h.name)}">
+      <span class="hi-svg">${(window.HATS || {})[h.id] || ''}</span><b>${esc(h.name)}</b>
+      <small>${me.hat === h.id ? 'Getragen' : owned(h.id) ? 'Im Besitz' : h.league ? '🔒 Liga' : `${h.price} 🪙`}</small></button>`;
+    return `<div class="wd-top"><h2 style="margin:0">Hutladen</h2><span class="gold-pill">🪙 ${me.gold}</span></div>
+      <div class="wd-stage">${figHTML(me.avatar, 'wd-fig', prev)}</div>
+      ${action}
+      <h3 style="margin:12px 0 6px">Hüte</h3><div class="hat-grid">${S.hatsDef.filter((h) => !h.league).map(item).join('')}</div>
+      <h3 style="margin:12px 0 6px">Liga-Hüte</h3><div class="hat-grid">${S.hatsDef.filter((h) => h.league).map(item).join('')}</div>
+      <button class="btn" data-act="close">Schließen</button>`;
+  }
+
+  function accountHTML() {
+    const me = S.me; const sec = deviceSecret();
+    const grouped = sec.match(/.{1,4}/g).join('-');
+    return `<h2>Dein Konto</h2>
+      <p class="muted" style="margin-top:0">${me ? `${esc(me.name)} · Level ${me.level} · ${me.played} Spiele · ${me.wins} Siege` : ''}</p>
+      ${S.storeKind === 'memory' ? '<p class="hint warn">Hinweis: Der Server speichert gerade nur vorübergehend. Nach einem Neustart kann der Spielstand weg sein.</p>' : ''}
+      <p style="margin:8px 0 4px"><b>Wiederherstellungs-Code</b></p>
+      <p class="hint" style="margin:0 0 6px">Damit holst du dein Konto (Gold, Hüte, Rang) auf einem anderen Gerät zurück. Geheim halten!</p>
+      <div class="secret" id="secret-box">${grouped}</div>
+      <div class="row"><button class="btn small" data-act="copysecret">Kopieren</button></div>
+      <p style="margin:14px 0 4px"><b>Konto wiederherstellen</b></p>
+      <input id="in-restore" type="text" placeholder="Code einfügen" autocomplete="off" style="width:100%">
+      <button class="btn ghost" data-act="restore">Wiederherstellen</button>
+      <button class="btn" data-act="close">Schließen</button>`;
   }
 
   /* ------------------------------------------------- Aktionen */
@@ -672,7 +821,8 @@
       S.profile.avatar = id; saveProfile();
       document.querySelectorAll('.avatar-pick').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.id === id)));
       const hero = document.getElementById('hero');
-      if (hero) hero.innerHTML = figHTML(id, 'hero-fig');
+      if (hero) hero.innerHTML = figHTML(id, 'hero-fig', S.me && S.me.hat);
+      if (S.me) { S.me.avatar = id; send({ type: 'setprofile', avatar: id }); }
     },
     create() {
       S.profile.name = document.getElementById('in-name').value.trim();
@@ -728,6 +878,25 @@
     zoom(t) { S.ui.modal = { type: 'zoom', id: Number(t.dataset.id) }; renderModals(); },
     flip(t) { send({ type: 'flip', pile: t.dataset.pile }); },
     rematch() { S.ui.marks = { c: {}, a: {}, l: {} }; send({ type: 'rematch' }); },
+    noop() {},
+    ranked() { S.ui.modal = { type: 'ranked' }; renderModals(); },
+    rankedjoin() { send({ type: 'rankedjoin' }); },
+    rankedleave() { send({ type: 'rankedleave' }); },
+    rankedagain() { leaveNow(); S.ui.modal = { type: 'ranked' }; send({ type: 'rankedjoin' }); renderModals(); },
+    leaderboard() { S.ui.modal = { type: 'leaderboard' }; S.lb = null; send({ type: 'leaderboard', scope: S.ui.lbScope }); renderModals(); },
+    lbscope(t) { S.ui.lbScope = t.dataset.scope; S.lb = null; send({ type: 'leaderboard', scope: S.ui.lbScope }); renderModals(); },
+    wardrobe() { S.ui.modal = { type: 'wardrobe' }; S.ui.prevHat = undefined; renderModals(); },
+    prevhat(t) { S.ui.prevHat = t.dataset.hat; renderModals(); },
+    buy(t) { send({ type: 'buy', hat: t.dataset.hat }); },
+    equip(t) { const h = t.dataset.hat || null; send({ type: 'equip', hat: h }); S.ui.prevHat = h || '__none'; },
+    account() { S.ui.modal = { type: 'account' }; renderModals(); },
+    async copysecret() { try { await navigator.clipboard.writeText(deviceSecret()); toast('Code kopiert.'); } catch { toast('Kopieren nicht möglich – bitte markieren und kopieren.', true); } },
+    restore() {
+      const v = (document.getElementById('in-restore').value || '').toLowerCase().replace(/[^0-9a-f]/g, '');
+      if (!/^[0-9a-f]{32,64}$/.test(v)) { toast('Der Code ist ungültig.', true); return; }
+      LS.set('unknown.secret', v); LS.del('unknown.session'); LS.del('unknown.profile');
+      location.reload();
+    },
     hideend() { S.ui.hideEnd = true; renderModals(); },
   };
 
@@ -745,6 +914,11 @@
     if (e.target.id === 'in-code') e.target.value = e.target.value.toUpperCase();
   });
 
+  document.addEventListener('change', (e) => {
+    if (e.target.id === 'sel-region') send({ type: 'setprofile', region: e.target.value });
+    if (e.target.id === 'in-name' && S.me) send({ type: 'setprofile', name: e.target.value });
+  });
+
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') { if (S.ui.modal) actions.close(); else if (S.ui.drawer) setDrawer(null); }
     if (e.key === 'Enter' && e.target.id === 'in-code') actions.join();
@@ -758,11 +932,12 @@
 
   async function init() {
     try {
-      const [avatars, sets] = await Promise.all([
+      const [avatars, sets, hatsDef] = await Promise.all([
         fetch('data/avatars.json').then((r) => r.json()),
         fetch('data/sets.json').then((r) => r.json()),
+        fetch('data/hats.json').then((r) => r.json()),
       ]);
-      S.data = { avatars, sets };
+      S.data = { avatars, sets }; S.hatsDef = hatsDef;
     } catch {
       $app.innerHTML = '<p class="center" style="margin-top:40px">Konnte die Spieldaten nicht laden. Bitte Seite neu laden.</p>';
       return;
