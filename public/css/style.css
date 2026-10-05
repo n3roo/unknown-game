@@ -846,3 +846,7 @@ body.room {
 .hat-item small { color: #bbb; }
 .secret { font: 700 15px ui-monospace, monospace; word-break: break-all; padding: 10px; border-radius: 10px; background: rgba(0,0,0,.35); user-select: all; }
 .hint.warn { color: #ffcf7a; }
+
+.fig .emo { position: absolute; inset: 0; display: grid; place-items: center; font-size: 12cqmin; font-weight: 400; opacity: .8; }
+.hero .dress { position: absolute; bottom: -4px; left: 50%; transform: translateX(-50%); padding: 6px 14px; border-radius: 999px; border: 1px solid #e8a94a; background: rgba(20,12,30,.85); color: #ffe2a8; font: 800 13px system-ui, sans-serif; cursor: pointer; z-index: 3; white-space: nowrap; }
+.hat-item .nohat { font-style: normal; font-size: 30px; display: grid; place-items: center; height: 100%; }

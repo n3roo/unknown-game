@@ -120,7 +120,7 @@
   }
   function figHTML(id, cls = '', hat = null) {
     const a = avatarDef(id);
-    return `<span class="fig ${cls}"><b aria-hidden="true">${a.emoji}</b><span class="fb" style="--ar:${a.ar || 1}"><img src="assets/avatars/${esc(a.id)}_cut.png" alt="${esc(a.name)}" onerror="this.remove()">${hatHTML(a, hat)}</span></span>`;
+    return `<span class="fig ${cls}"><span class="fb" style="--ar:${a.ar || 1}"><img src="assets/avatars/${esc(a.id)}_cut.png" alt="${esc(a.name)}" data-e="${a.emoji}" onerror="this.replaceWith(Object.assign(document.createElement('b'),{textContent:this.dataset.e,className:'emo'}))">${hatHTML(a, hat)}</span></span>`;
   }
   const LOGO = (cls = '') => `<img class="logo-img ${cls}" src="assets/logo.png" alt="UNKNOWN" draggable="false">`;
   function avatarPicker(selected, taken = []) {
@@ -182,7 +182,7 @@
   function handle(m) {
     switch (m.type) {
       case 'joined':
-        S.q = null; if (S.ui.modal && ['ranked', 'wardrobe', 'leaderboard', 'account'].includes(S.ui.modal.type)) S.ui.modal = null;
+        S.q = null; if (S.ui.modal && ['ranked', 'wardrobe', 'shop', 'leaderboard', 'account'].includes(S.ui.modal.type)) S.ui.modal = null;
         S.session = { code: m.code, token: m.token, playerId: m.playerId };
         LS.set('unknown.session', S.session);
         if (new URLSearchParams(location.search).has('code')) history.replaceState(null, '', location.pathname);
@@ -250,13 +250,13 @@
     const lg = me ? leagueFor(me.rating) : null;
     $app.innerHTML = `
       <div class="chips">
-        <button class="chip" data-act="wardrobe" aria-label="Gold"><i>🪙</i><b>${me ? me.gold : '–'}</b></button>
+        <button class="chip" data-act="shop" aria-label="Shop"><i>🪙</i><b>${me ? me.gold : '–'}</b></button>
         <button class="chip" data-act="ranked" aria-label="Rang"><i>${lg ? lg.icon : '🏅'}</i><b>${me ? me.rating : '–'}</b></button>
         <button class="chip" data-act="account" aria-label="Konto"><i>⭐</i><b>Lv ${me ? me.level : 1}</b></button>
       </div>
       <h1 class="logo-h">${LOGO()}</h1>
       <div class="home-top">
-        <div class="hero" id="hero">${figHTML(S.profile.avatar, 'hero-fig', me && me.hat)}</div>
+        <div class="hero" id="hero">${figHTML(S.profile.avatar, 'hero-fig', me && me.hat)}<button class="dress" data-act="wardrobe">🎩 Umziehen</button></div>
         <div class="profile">
           <label class="field"><span>Dein Name</span>
             <input id="in-name" type="text" maxlength="16" autocomplete="nickname" placeholder="z. B. Mia" value="${esc(S.profile.name)}"></label>
@@ -275,7 +275,7 @@
         ${avatarPicker(S.profile.avatar)}
       </section>
       <div class="tiles">
-        <button class="tile" data-act="wardrobe"><b>Hüte</b><span>Kaufen &amp; anziehen</span><em>🎩</em></button>
+        <button class="tile" data-act="shop"><b>Shop</b><span>Hüte kaufen</span><em>🛒</em></button>
         <button class="tile" data-act="leaderboard"><b>Rangliste</b><span>Weltweit &amp; Land</span><em>🏆</em></button>
         <button class="tile" data-act="collection"><b>Deine Karten</b><span>${setDef().name} · 49</span><em>🃏</em></button>
         <button class="tile" data-act="rules"><b>Spielregeln</b><span>Kurz erklärt</span><em>📜</em></button>
@@ -613,6 +613,7 @@
       else if (m.type === 'pile') html = pileHTML(m.pid);
       else if (m.type === 'ranked') html = rankedHTML();
       else if (m.type === 'wardrobe') html = wardrobeHTML();
+      else if (m.type === 'shop') html = shopHTML();
       else if (m.type === 'leaderboard') html = leaderboardHTML();
       else if (m.type === 'account') html = accountHTML();
       else if (m.type === 'guess') html = guessHTML();
@@ -759,21 +760,38 @@
     return `<h2>Rangliste</h2>${tabs}${body}<button class="btn" data-act="close">Schließen</button>`;
   }
 
+  const hatItem = (h, me, state) => `<button class="hat-item ${state.sel ? 'sel' : ''} ${state.own ? 'own' : ''}" data-act="${state.act}" data-hat="${h ? h.id : ''}" aria-label="${esc(h ? h.name : 'Ohne Hut')}">
+      <span class="hi-svg">${h ? (window.HATS || {})[h.id] || '' : '<i class="nohat">🚫</i>'}</span><b>${esc(h ? h.name : 'Ohne Hut')}</b><small>${state.label}</small></button>`;
+
+  /** Garderobe: nur besessene Hüte, Tippen zieht sofort an. */
   function wardrobeHTML() {
     const me = S.me;
     if (!me) return '<p>Profil wird geladen …</p><button class="btn" data-act="close">Schließen</button>';
-    const prev = S.ui.prevHat !== undefined && S.ui.prevHat !== '__none' ? S.ui.prevHat : me.hat;
+    const mine = S.hatsDef.filter((h) => me.hats.includes(h.id));
+    return `<h2 style="margin:0 0 6px">Garderobe</h2>
+      <div class="wd-stage">${figHTML(me.avatar, 'wd-fig', me.hat)}</div>
+      <div class="hat-grid">${hatItem(null, me, { sel: !me.hat, own: false, act: 'equip', label: me.hat ? 'Ausziehen' : 'Getragen' })}
+        ${mine.map((h) => hatItem(h, me, { sel: me.hat === h.id, own: true, act: 'equip', label: me.hat === h.id ? 'Getragen' : 'Anziehen' })).join('')}</div>
+      ${mine.length ? '' : '<p class="hint center">Du hast noch keine Hüte. Im Shop gibt es welche!</p>'}
+      <button class="btn ghost" data-act="shop">🛒 Zum Shop</button>
+      <button class="btn" data-act="close">Schließen</button>`;
+  }
+
+  /** Shop: nur kaufen. Vorschau auf dem eigenen Avatar. */
+  function shopHTML() {
+    const me = S.me;
+    if (!me) return '<p>Profil wird geladen …</p><button class="btn" data-act="close">Schließen</button>';
+    const prev = S.ui.prevHat || null;
     const sel = prev ? hatDef(prev) : null;
     const owned = (id) => me.hats.includes(id);
-    let action = '';
-    if (!sel) action = me.hat ? '<button class="btn" data-act="equip" data-hat="">Hut ausziehen</button>' : '<p class="hint center">Wähle einen Hut zur Vorschau.</p>';
-    else if (owned(sel.id)) action = me.hat === sel.id ? '<button class="btn" data-act="equip" data-hat="">Hut ausziehen</button>' : `<button class="btn primary" data-act="equip" data-hat="${sel.id}">Anziehen</button>`;
-    else if (sel.league) action = `<p class="hint center">Diesen Hut bekommst du beim Aufstieg in die ${esc(leagueDef(sel.league).name)}-Liga.</p>`;
-    else action = `<button class="btn primary" data-act="buy" data-hat="${sel.id}" ${me.gold < sel.price ? 'disabled' : ''}>Kaufen · ${sel.price} 🪙</button>${me.gold < sel.price ? `<p class="hint center">Dir fehlen ${sel.price - me.gold} Gold. Gewinne Runden, um Gold zu verdienen.</p>` : ''}`;
-    const item = (h) => `<button class="hat-item ${prev === h.id ? 'sel' : ''} ${owned(h.id) ? 'own' : ''}" data-act="prevhat" data-hat="${h.id}" aria-label="${esc(h.name)}">
-      <span class="hi-svg">${(window.HATS || {})[h.id] || ''}</span><b>${esc(h.name)}</b>
-      <small>${me.hat === h.id ? 'Getragen' : owned(h.id) ? 'Im Besitz' : h.league ? '🔒 Liga' : `${h.price} 🪙`}</small></button>`;
-    return `<div class="wd-top"><h2 style="margin:0">Hutladen</h2><span class="gold-pill">🪙 ${me.gold}</span></div>
+    let action = '<p class="hint center">Tippe einen Hut für die Vorschau.</p>';
+    if (sel) {
+      if (owned(sel.id)) action = '<p class="hint center">Den Hut besitzt du schon. Zieh ihn oben im Menü an (🎩 Umziehen).</p>';
+      else if (sel.league) action = `<p class="hint center">Diesen Hut bekommst du beim Aufstieg in die ${esc(leagueDef(sel.league).name)}-Liga.</p>`;
+      else action = `<button class="btn primary" data-act="buy" data-hat="${sel.id}" ${me.gold < sel.price ? 'disabled' : ''}>Kaufen · ${sel.price} 🪙</button>${me.gold < sel.price ? `<p class="hint center">Dir fehlen ${sel.price - me.gold} Gold. Gewinne Runden, um Gold zu verdienen.</p>` : ''}`;
+    }
+    const item = (h) => hatItem(h, me, { sel: prev === h.id, own: owned(h.id), act: 'prevhat', label: owned(h.id) ? '✓ Im Besitz' : h.league ? '🔒 Liga' : `${h.price} 🪙` });
+    return `<div class="wd-top"><h2 style="margin:0">Shop</h2><span class="gold-pill">🪙 ${me.gold}</span></div>
       <div class="wd-stage">${figHTML(me.avatar, 'wd-fig', prev)}</div>
       ${action}
       <h3 style="margin:12px 0 6px">Hüte</h3><div class="hat-grid">${S.hatsDef.filter((h) => !h.league).map(item).join('')}</div>
@@ -821,7 +839,7 @@
       S.profile.avatar = id; saveProfile();
       document.querySelectorAll('.avatar-pick').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.id === id)));
       const hero = document.getElementById('hero');
-      if (hero) hero.innerHTML = figHTML(id, 'hero-fig', S.me && S.me.hat);
+      if (hero) hero.innerHTML = figHTML(id, 'hero-fig', S.me && S.me.hat) + '<button class="dress" data-act="wardrobe">🎩 Umziehen</button>';
       if (S.me) { S.me.avatar = id; send({ type: 'setprofile', avatar: id }); }
     },
     create() {
@@ -885,10 +903,11 @@
     rankedagain() { leaveNow(); S.ui.modal = { type: 'ranked' }; send({ type: 'rankedjoin' }); renderModals(); },
     leaderboard() { S.ui.modal = { type: 'leaderboard' }; S.lb = null; send({ type: 'leaderboard', scope: S.ui.lbScope }); renderModals(); },
     lbscope(t) { S.ui.lbScope = t.dataset.scope; S.lb = null; send({ type: 'leaderboard', scope: S.ui.lbScope }); renderModals(); },
-    wardrobe() { S.ui.modal = { type: 'wardrobe' }; S.ui.prevHat = undefined; renderModals(); },
+    wardrobe() { S.ui.modal = { type: 'wardrobe' }; renderModals(); },
+    shop() { S.ui.modal = { type: 'shop' }; S.ui.prevHat = null; renderModals(); },
     prevhat(t) { S.ui.prevHat = t.dataset.hat; renderModals(); },
     buy(t) { send({ type: 'buy', hat: t.dataset.hat }); },
-    equip(t) { const h = t.dataset.hat || null; send({ type: 'equip', hat: h }); S.ui.prevHat = h || '__none'; },
+    equip(t) { send({ type: 'equip', hat: t.dataset.hat || null }); },
     account() { S.ui.modal = { type: 'account' }; renderModals(); },
     async copysecret() { try { await navigator.clipboard.writeText(deviceSecret()); toast('Code kopiert.'); } catch { toast('Kopieren nicht möglich – bitte markieren und kopieren.', true); } },
     restore() {
