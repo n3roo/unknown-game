@@ -1,228 +1,229 @@
 {
-  "shared": {
-    "accessories": [
-      {
-        "id": "sombrero",
-        "name": "Sombrero",
-        "img": "assets/accessories/sombrero.png",
-        "cut": "assets/accessories/sombrero_cut.png",
-        "wear": {
-          "type": "top",
-          "scale": 2.1,
-          "dy": 0.55
-        }
-      },
-      {
-        "id": "zylinder",
-        "name": "Zylinder",
-        "img": "assets/accessories/zylinder.png",
-        "cut": "assets/accessories/zylinder_cut.png",
-        "wear": {
-          "type": "top",
-          "scale": 1.25,
-          "dy": 0.38
-        }
-      },
-      {
-        "id": "partyhut",
-        "name": "Partyhut",
-        "img": "assets/accessories/partyhut.png",
-        "cut": "assets/accessories/partyhut_cut.png",
-        "wear": {
-          "type": "top",
-          "scale": 1.0,
-          "dy": 0.45,
-          "rot": -8
-        }
-      },
-      {
-        "id": "sonnenbrille",
-        "name": "Sonnenbrille",
-        "img": "assets/accessories/sonnenbrille.png",
-        "cut": "assets/accessories/sonnenbrille_cut.png",
-        "wear": {
-          "type": "eyes",
-          "scale": 1.0
-        }
-      },
-      {
-        "id": "kopfhoerer",
-        "name": "Kopfhörer",
-        "img": "assets/accessories/kopfhoerer.png",
-        "cut": "assets/accessories/kopfhoerer_cut.png",
-        "wear": {
-          "type": "phones",
-          "scale": 1.75,
-          "dy": 0.62,
-          "behind": true
-        }
-      },
-      {
-        "id": "kochmuetze",
-        "name": "Kochmütze",
-        "img": "assets/accessories/kochmuetze.png",
-        "cut": "assets/accessories/kochmuetze_cut.png",
-        "wear": {
-          "type": "top",
-          "scale": 1.45,
-          "dy": 0.55
-        }
-      },
-      {
-        "id": "krone",
-        "name": "Krone",
-        "img": "assets/accessories/krone.png",
-        "cut": "assets/accessories/krone_cut.png",
-        "wear": {
-          "type": "top",
-          "scale": 1.15,
-          "dy": 0.42
-        }
-      }
-    ],
-    "locations": [
-      {
-        "id": "buero",
-        "name": "Büro",
-        "img": "assets/locations/buero.png"
-      },
-      {
-        "id": "vulkan",
-        "name": "Vulkan",
-        "img": "assets/locations/vulkan.png"
-      },
-      {
-        "id": "strand",
-        "name": "Strand",
-        "img": "assets/locations/strand.png"
-      },
-      {
-        "id": "berge",
-        "name": "Berge",
-        "img": "assets/locations/berge.png"
-      },
-      {
-        "id": "weltraum",
-        "name": "Weltraum",
-        "img": "assets/locations/weltraum.png"
-      },
-      {
-        "id": "unterwasserwelt",
-        "name": "Unterwasserwelt",
-        "img": "assets/locations/unterwasserwelt.png"
-      },
-      {
-        "id": "nachtclub",
-        "name": "Nachtclub",
-        "img": "assets/locations/nachtclub.png"
-      }
-    ]
-  },
-  "sets": [
-    {
-      "id": "western",
-      "name": "Wild West",
-      "characters": [
-        {
-          "id": "revolverheldin",
-          "name": "Revolverheldin",
-          "img": "assets/characters/revolverheldin.png",
-          "cut": "assets/characters/revolverheldin_cut.png",
-          "ar": 0.4014,
-          "head": {
-            "cx": 0.549,
-            "top": 0.0,
-            "w": 0.386,
-            "eye": 0.075,
-            "hh": 0.135
-          }
-        },
-        {
-          "id": "sheriff",
-          "name": "Sheriff",
-          "img": "assets/characters/sheriff.png",
-          "cut": "assets/characters/sheriff_cut.png",
-          "ar": 0.4098,
-          "head": {
-            "cx": 0.533,
-            "top": 0.0,
-            "w": 0.343,
-            "eye": 0.075,
-            "hh": 0.135
-          }
-        },
-        {
-          "id": "goldgraeberin",
-          "name": "Goldgräberin",
-          "img": "assets/characters/goldgraeberin.png",
-          "cut": "assets/characters/goldgraeberin_cut.png",
-          "ar": 0.6086,
-          "head": {
-            "cx": 0.567,
-            "top": 0.002,
-            "w": 0.286,
-            "eye": 0.077,
-            "hh": 0.135
-          },
-          "scale": 118
-        },
-        {
-          "id": "gefangener",
-          "name": "Gefangener",
-          "img": "assets/characters/gefangener.png",
-          "cut": "assets/characters/gefangener_cut.png",
-          "ar": 0.5,
-          "head": {
-            "cx": 0.543,
-            "top": 0.002,
-            "w": 0.303,
-            "eye": 0.077,
-            "hh": 0.135
-          }
-        },
-        {
-          "id": "banditin",
-          "name": "Banditin",
-          "img": "assets/characters/banditin.png",
-          "cut": "assets/characters/banditin_cut.png",
-          "ar": 0.4366,
-          "head": {
-            "cx": 0.489,
-            "top": 0.002,
-            "w": 0.408,
-            "eye": 0.077,
-            "hh": 0.135
-          }
-        },
-        {
-          "id": "saloonbesitzer",
-          "name": "Saloonbesitzer",
-          "img": "assets/characters/saloonbesitzer.png",
-          "cut": "assets/characters/saloonbesitzer_cut.png",
-          "ar": 0.4695,
-          "head": {
-            "cx": 0.487,
-            "top": 0.0,
-            "w": 0.27,
-            "eye": 0.075,
-            "hh": 0.135
-          }
-        },
-        {
-          "id": "kopfgeldjaeger",
-          "name": "Kopfgeldjäger",
-          "img": "assets/characters/kopfgeldjaeger.png",
-          "cut": "assets/characters/kopfgeldjaeger_cut.png",
-          "ar": 0.4614,
-          "head": {
-            "cx": 0.42,
-            "top": 0.0,
-            "w": 0.36,
-            "eye": 0.075,
-            "hh": 0.135
-          }
-        }
-      ]
+ "shared": {
+  "accessories": [
+   {
+    "id": "sombrero",
+    "name": "Sombrero",
+    "img": "assets/accessories/sombrero.png",
+    "cut": "assets/accessories/sombrero_cut.png",
+    "wear": {
+     "type": "top",
+     "scale": 2.1,
+     "dy": 0.47
     }
+   },
+   {
+    "id": "zylinder",
+    "name": "Zylinder",
+    "img": "assets/accessories/zylinder.png",
+    "cut": "assets/accessories/zylinder_cut.png",
+    "wear": {
+     "type": "top",
+     "scale": 1.25,
+     "dy": 0.3
+    }
+   },
+   {
+    "id": "partyhut",
+    "name": "Partyhut",
+    "img": "assets/accessories/partyhut.png",
+    "cut": "assets/accessories/partyhut_cut.png",
+    "wear": {
+     "type": "top",
+     "scale": 1.0,
+     "dy": 0.34,
+     "rot": -8
+    }
+   },
+   {
+    "id": "sonnenbrille",
+    "name": "Sonnenbrille",
+    "img": "assets/accessories/sonnenbrille.png",
+    "cut": "assets/accessories/sonnenbrille_cut.png",
+    "wear": {
+     "type": "eyes",
+     "scale": 1.0
+    }
+   },
+   {
+    "id": "kopfhoerer",
+    "name": "Kopfhörer",
+    "img": "assets/accessories/kopfhoerer.png",
+    "cut": "assets/accessories/kopfhoerer_cut.png",
+    "wear": {
+     "type": "phones",
+     "scale": 1.75,
+     "dy": 0.62,
+     "behind": true
+    }
+   },
+   {
+    "id": "kochmuetze",
+    "name": "Kochmütze",
+    "img": "assets/accessories/kochmuetze.png",
+    "cut": "assets/accessories/kochmuetze_cut.png",
+    "wear": {
+     "type": "top",
+     "scale": 1.45,
+     "dy": 0.43
+    }
+   },
+   {
+    "id": "krone",
+    "name": "Krone",
+    "img": "assets/accessories/krone.png",
+    "cut": "assets/accessories/krone_cut.png",
+    "wear": {
+     "type": "top",
+     "scale": 1.15,
+     "dy": 0.32
+    }
+   }
+  ],
+  "locations": [
+   {
+    "id": "buero",
+    "name": "Büro",
+    "img": "assets/locations/buero.png"
+   },
+   {
+    "id": "vulkan",
+    "name": "Vulkan",
+    "img": "assets/locations/vulkan.png"
+   },
+   {
+    "id": "strand",
+    "name": "Strand",
+    "img": "assets/locations/strand.png"
+   },
+   {
+    "id": "berge",
+    "name": "Berge",
+    "img": "assets/locations/berge.png"
+   },
+   {
+    "id": "weltraum",
+    "name": "Weltraum",
+    "img": "assets/locations/weltraum.png"
+   },
+   {
+    "id": "unterwasserwelt",
+    "name": "Unterwasserwelt",
+    "img": "assets/locations/unterwasserwelt.png"
+   },
+   {
+    "id": "nachtclub",
+    "name": "Nachtclub",
+    "img": "assets/locations/nachtclub.png"
+   }
   ]
+ },
+ "sets": [
+  {
+   "id": "western",
+   "name": "Wild West",
+   "characters": [
+    {
+     "id": "revolverheldin",
+     "name": "Revolverheldin",
+     "img": "assets/characters/revolverheldin.png",
+     "cut": "assets/characters/revolverheldin_cut.png",
+     "ar": 0.4014,
+     "head": {
+      "cx": 0.549,
+      "top": 0.0,
+      "w": 0.386,
+      "eye": 0.075,
+      "hh": 0.135
+     }
+    },
+    {
+     "id": "sheriff",
+     "name": "Sheriff",
+     "img": "assets/characters/sheriff.png",
+     "cut": "assets/characters/sheriff_cut.png",
+     "ar": 0.4098,
+     "head": {
+      "cx": 0.533,
+      "top": 0.0,
+      "w": 0.343,
+      "eye": 0.075,
+      "hh": 0.135
+     }
+    },
+    {
+     "id": "goldgraeberin",
+     "name": "Goldgräberin",
+     "img": "assets/characters/goldgraeberin.png",
+     "cut": "assets/characters/goldgraeberin_cut.png",
+     "ar": 0.6086,
+     "head": {
+      "cx": 0.567,
+      "top": 0.002,
+      "w": 0.286,
+      "eye": 0.077,
+      "hh": 0.135
+     },
+     "scale": 94
+    },
+    {
+     "id": "gefangener",
+     "name": "Gefangener",
+     "img": "assets/characters/gefangener.png",
+     "cut": "assets/characters/gefangener_cut.png",
+     "ar": 0.5,
+     "head": {
+      "cx": 0.543,
+      "top": 0.002,
+      "w": 0.303,
+      "eye": 0.077,
+      "hh": 0.135
+     }
+    },
+    {
+     "id": "banditin",
+     "name": "Banditin",
+     "img": "assets/characters/banditin.png",
+     "cut": "assets/characters/banditin_cut.png",
+     "ar": 0.4366,
+     "head": {
+      "cx": 0.489,
+      "top": 0.002,
+      "w": 0.408,
+      "eye": 0.077,
+      "hh": 0.135
+     }
+    },
+    {
+     "id": "saloonbesitzer",
+     "name": "Saloonbesitzer",
+     "img": "assets/characters/saloonbesitzer.png",
+     "cut": "assets/characters/saloonbesitzer_cut.png",
+     "ar": 0.4695,
+     "head": {
+      "cx": 0.487,
+      "top": 0.0,
+      "w": 0.27,
+      "eye": 0.075,
+      "hh": 0.135
+     }
+    },
+    {
+     "id": "kopfgeldjaeger",
+     "name": "Kopfgeldjäger",
+     "img": "assets/characters/kopfgeldjaeger.png",
+     "cut": "assets/characters/kopfgeldjaeger_cut.png",
+     "ar": 0.4614,
+     "head": {
+      "cx": 0.42,
+      "top": 0.0,
+      "w": 0.36,
+      "eye": 0.075,
+      "hh": 0.135
+     }
+    }
+   ],
+   "cardArt": "assets/cards/western/{id}.webp"
+  }
+ ]
 }

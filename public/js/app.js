@@ -26,7 +26,7 @@
     reconnectDelay: 800,
     noReconnect: false,
     pingTimer: null,
-    ui: { notes: true, sel: null, modal: null, guess: { sel: {} }, pickAvatar: false, hideEnd: false },
+    ui: { drawer: null, marks: { c: {}, a: {}, l: {} }, sel: null, modal: null, guess: { sel: {} }, pickAvatar: false, hideEnd: false },
   };
 
   /* ------------------------------------------------------ Helfer */
@@ -70,15 +70,21 @@
     else if (w.type === 'phones') { top = (hd.top + w.dy * hd.hh) * 100; tf = 'translate(-50%,-66%)'; }
     else { top = (hd.top + w.dy * hd.hh) * 100; tf = `translate(-50%,-100%) rotate(${w.rot || 0}deg)`; }
     const accImg = `<img class="acc ${w.behind ? 'behind' : ''}" src="${esc(ac.cut)}" alt="" draggable="false" style="left:${left}%;top:${top.toFixed(1)}%;width:${width}%;transform:${tf}">`;
+    /* Sobald fertig gemalte Karten existieren: sets.json -> "cardArt": "assets/cards/western/{id}.webp".
+       Das Bild liegt dann über der Platzhalter-Komposition; fehlt eine Datei, bleibt die Komposition sichtbar. */
+    const id = typeof x === 'object' ? x.c * N + x.a : x;
+    const art = setDef().cardArt
+      ? `<img class="art" src="${esc(setDef().cardArt.replace('{id}', id))}" alt="" draggable="false" loading="lazy" onload="this.closest('.card').classList.add('painted')" onerror="this.remove()">` : '';
     return `<div class="card ${cls}" role="img" aria-label="${esc(label)}"><div class="card-face">
       <div class="pic">
         <img class="bg" src="${esc(f.l.img)}" alt="" draggable="false">
-        <div class="who" style="--ar:${ch.ar};--h:${ch.scale || 128}%;--cx:${left}%">
+        <div class="who" style="--ar:${ch.ar};--h:${ch.scale || 100}%;--cx:${left}%">
           ${accImg}
           <img class="ch" src="${esc(ch.cut)}" alt="" draggable="false">
         </div>
+        ${art}
       </div>
-      <div class="c-cap">${esc(ch.name)} · ${esc(ac.name)} · ${esc(f.l.name)}</div>
+      <div class="c-cap"><b>${esc(ch.name)}</b><span>${esc(ac.name)} · ${esc(f.l.name)}</span></div>
     </div></div>`;
   }
   function backHTML() {
@@ -173,11 +179,13 @@
   function render() {
     if (!S.data) return;
     document.body.classList.toggle('room', !!(S.st && S.st.phase !== 'lobby'));
+    if (!(S.st && S.st.phase !== 'lobby')) $app.className = '';
     if (!S.st && S.session) renderResume();
     else if (!S.st) renderHome();
     else if (S.st.phase === 'lobby') renderLobby();
     else renderGame();
     renderModals();
+    renderDrawers();
   }
 
   function renderResume() {
@@ -249,9 +257,9 @@
   }
 
   const SEAT_POS = {
-    1: [[50, 4]],
-    2: [[24, 8], [76, 8]],
-    3: [[15, 33], [50, 2], [85, 33]],
+    1: [[50, 2]],
+    2: [[26, 5], [74, 5]],
+    3: [[16, 12], [50, 0], [84, 12]],
   };
 
   /** Stapel auf dem Tisch: oberste Karte sichtbar, Zahl als Marke, Tippen öffnet beide Stapel des Spielers. */
@@ -264,7 +272,7 @@
     if (hidden) face = backHTML();
     else if (cards && cards.length) face = cardHTML(cards[cards.length - 1]);
     else face = '<div class="ps-empty"></div>';
-    return `<button class="ps ${yes ? 'yes' : 'no'} ${hidden ? 'hid' : ''} ${count > 1 && !hidden ? 'multi' : ''}" data-act="pile" data-pid="${esc(p.id)}" aria-label="${esc(p.name)}: ${yes ? 'passt' : 'passt nicht'}, ${count} Karten${hidden ? ', umgedreht' : ''}">
+    return `<button class="ps ${yes ? 'yes' : 'no'} ${hidden ? 'hid' : ''} ${count > 1 && !hidden ? 'multi' : ''}" data-act="${p.id === S.st.youId ? 'opennotes' : 'pile'}" data-pid="${esc(p.id)}" aria-label="${esc(p.name)}: ${yes ? 'passt' : 'passt nicht'}, ${count} Karten${hidden ? ', umgedreht' : ''}">
       <span class="ps-card">${face}</span><span class="ps-n">${hidden ? '🔒 ' : ''}${count}</span></button>`;
   }
 
@@ -279,16 +287,15 @@
     if (p.out) tag = 'raus';
     else if (!p.connected) tag = 'getrennt';
     else if (st.phase === 'clues' && !p.clueGiven) tag = 'überlegt';
-    const plate = `<div class="s3-plate"><span class="nm">${esc(p.name)}</span><span class="pips" title="Falsche Tipps">${pips}</span>${tag ? `<em>${tag}</em>` : ''}</div>`;
-    const style = `left:${pos[0]}%;top:${pos[1]}%`;
+    const plate = `<div class="s3-plate"><span class="nm">${esc(isMe ? 'Du' : p.name)}</span><span class="pips" title="Falsche Tipps">${pips}</span>${tag ? `<em>${tag}</em>` : ''}</div>`;
     if (isMe) {
-      return `<div class="s3 me ${turn ? 'turn' : ''} ${p.out ? 'out' : ''}" style="${style}">
+      return `<div class="s3 me ${turn ? 'turn' : ''} ${p.out ? 'out' : ''}">
         <div class="me-side">${pileStack(p, 'related')}</div>
         <div class="me-mid">${secret}<div class="me-bust">${figHTML(p.avatar)}</div>${plate}</div>
         <div class="me-side">${pileStack(p, 'notRelated')}</div>
       </div>`;
     }
-    return `<div class="s3 ${pos[1] < 15 ? 'back' : ''} ${turn ? 'turn' : ''} ${p.out ? 'out' : ''}" style="${style}">
+    return `<div class="s3 opp ${turn ? 'turn' : ''} ${p.out ? 'out' : ''}" style="left:${pos[0]}%;top:${pos[1]}cqw">
       ${secret}
       <div class="s3-fig">${figHTML(p.avatar)}</div>
       ${plate}
@@ -296,11 +303,10 @@
     </div>`;
   }
 
-  /** Meine beiden Stapel, dauerhaft offen (zum Nachdenken). */
+  /** Meine beiden Stapel, beide gleichzeitig offen (Seitenleiste links). */
   function notesHTML() {
     const st = S.st;
     const me = st.players[st.you];
-    const open = S.ui.notes;
     const col = (which, cls, title) => {
       const cards = me[which];
       const count = which === 'related' ? me.relatedCount : me.notRelatedCount;
@@ -311,45 +317,73 @@
           : `<div class="notes-grid">${cards.map((id) => `<button class="card-btn" data-act="zoom" data-id="${id}">${cardHTML(id)}</button>`).join('')}</div>`;
       return `<div class="notes-col ${cls}"><h4>${title} <span>${count}</span></h4>${body}</div>`;
     };
-    return `<section class="notes">
-      <button class="notes-toggle" data-act="togglenotes" aria-expanded="${open}">Deine Hinweise <span>${open ? 'ausblenden' : 'einblenden'}</span></button>
-      ${open ? `<div class="notes-cols">${col('related', 'yes', '✓ Passt')}${col('notRelated', 'no', '✕ Passt nicht')}</div>` : ''}
-    </section>`;
+    return `<div class="notes-cols">${col('related', 'yes', '✓ Passt')}${col('notRelated', 'no', '✕ Passt nicht')}</div>`;
   }
 
   function centerHTML() {
     const st = S.st;
     const last = [...st.events].reverse().find((e) => e.type === 'play' || e.type === 'guess');
-    let card = '<div class="last-empty">Noch keine Karte</div>';
+    let card = '<div class="last-empty">Noch keine Karte<br>ausgespielt</div>';
     if (last) {
       const p = byId(last.player);
       const ok = last.type === 'play' ? last.related : last.ok;
       const label = last.type === 'play' ? (ok ? 'Passt' : 'Passt nicht') : (ok ? 'Richtig' : 'Falsch');
       card = `<div class="last"><div class="last-card">${cardHTML(last.type === 'guess' ? last.guess : last.card)}</div>
-        <div class="stamp ${ok ? 'yes' : 'no'}" title="${esc(p ? p.name : '')}">${label}</div></div>`;
+        <div class="stamp ${ok ? 'yes' : 'no'}">${esc(p ? p.name + ': ' : '')}${label}</div></div>`;
     }
-    return `<div class="center">
-      <div class="deck" title="Nachziehstapel"><div class="deck-card">${backHTML()}</div><span class="deck-n">${st.deckCount}</span></div>
-      ${card}
-    </div>`;
+    return `<div class="center">${card}</div>
+      <div class="deck" title="Nachziehstapel"><div class="deck-card">${backHTML()}</div><span class="deck-n">${st.deckCount}</span></div>`;
   }
 
+  /** Verlauf: eine Zeile pro Ereignis */
+  function eventLine(ev, mini) {
+    const p = byId(ev.player);
+    const name = `<b>${esc(p ? p.name : '?')}</b>`;
+    if (ev.type === 'play') {
+      return `<div class="feed-item"><div class="mini">${cardHTML(ev.card)}</div><span>${name} legt aus</span><span class="dotmark ${ev.related ? 'yes' : 'no'}">${ev.related ? 'passt' : 'passt nicht'}</span></div>`;
+    }
+    if (ev.type === 'guess') {
+      return `<div class="feed-item"><div class="mini">${cardHTML(ev.guess)}</div><span>${name} rät</span><span class="dotmark ${ev.ok ? 'yes' : 'no'}">${ev.ok ? 'richtig' : 'falsch'}</span></div>`;
+    }
+    if (ev.type === 'flip') {
+      return `<div class="feed-item"><span>${name} dreht den ${ev.pile === 'related' ? '„passt“' : '„passt nicht“'}-Stapel um${ev.auto ? ' (zweiter Fehler)' : ''}</span></div>`;
+    }
+    return `<div class="feed-item"><span>${name} ${ev.left ? 'hat das Spiel verlassen' : 'scheidet aus'}</span></div>`;
+  }
+  const feedEvents = () => S.st.events.filter((e) => ['play', 'guess', 'flip', 'out'].includes(e.type));
   function feedHTML() {
-    const items = S.st.events.filter((e) => ['play', 'guess', 'flip', 'out'].includes(e.type)).slice(-2).reverse();
-    return items.map((ev) => {
-      const p = byId(ev.player);
-      const name = `<b>${esc(p ? p.name : '?')}</b>`;
-      if (ev.type === 'play') {
-        return `<div class="feed-item"><div class="mini">${cardHTML(ev.card)}</div><span>${name} legt aus</span><span class="stamp ${ev.related ? 'yes' : 'no'}">${ev.related ? 'Passt' : 'Passt nicht'}</span></div>`;
-      }
-      if (ev.type === 'guess') {
-        return `<div class="feed-item"><div class="mini">${cardHTML(ev.guess)}</div><span>${name} rät</span><span class="stamp ${ev.ok ? 'yes' : 'no'}">${ev.ok ? 'Richtig' : 'Falsch'}</span></div>`;
-      }
-      if (ev.type === 'flip') {
-        return `<div class="feed-item"><span>${name} dreht den ${ev.pile === 'related' ? '„passt“' : '„passt nicht“'}-Stapel um${ev.auto ? ' (zweiter Fehler)' : ''}</span></div>`;
-      }
-      return `<div class="feed-item"><span>${name} ${ev.left ? 'hat das Spiel verlassen' : 'scheidet aus'}</span></div>`;
-    }).join('');
+    const items = feedEvents().slice().reverse();
+    return items.length ? items.map((ev) => eventLine(ev)).join('') : '<p class="notes-empty">Noch nichts passiert.</p>';
+  }
+  /** Dezente Mini-Leiste am linken Tischrand: die letzten drei Züge */
+  function tickerHTML() {
+    const items = feedEvents().slice(-2).reverse();
+    if (!items.length) return '';
+    return `<button class="ticker" data-act="opennotes" aria-label="Verlauf öffnen">${items.map((ev, k) => {
+      const ok = ev.type === 'play' ? ev.related : ev.type === 'guess' ? ev.ok : null;
+      const card = ev.type === 'play' ? ev.card : ev.type === 'guess' ? ev.guess : null;
+      return `<span class="tk ${ok === null ? '' : ok ? 'yes' : 'no'}" style="opacity:${1 - k * 0.28}">${card !== null ? cardHTML(card) : '<i>⚑</i>'}</span>`;
+    }).join('')}</button>`;
+  }
+
+  /** Übersichtskarte: alle Merkmale des Sets; Tippen streicht durch (nur für dich) */
+  function overviewHTML() {
+    const set = setDef();
+    const sh = S.data.sets.shared;
+    const m = S.ui.marks;
+    const sec = (k, title, list, cls) => `<section class="ov-sec"><h3>${title}</h3><div class="ov-grid ${cls}">${list.map((it, i) =>
+      `<button class="ov-item ${m[k][i] ? 'x' : ''}" data-act="mark" data-k="${k}" data-v="${i}" aria-pressed="${!!m[k][i]}">
+        <span class="ov-img"><img src="${esc(k === 'c' ? it.cut : (k === 'a' ? it.cut : it.img))}" alt="" draggable="false"></span><span class="ov-name">${esc(it.name)}</span></button>`).join('')}</div></section>`;
+    return `<div class="dr-head"><h2>Übersichtskarte</h2><button class="dr-x" data-act="closedrawer" aria-label="Schließen">✕</button></div>
+      <p class="muted dr-sub">Tippe auf ein Merkmal, um es für dich durchzustreichen.</p>
+      ${sec('c', 'Charaktere', set.characters, 'ch')}${sec('a', 'Accessoires', sh.accessories, 'ac')}${sec('l', 'Orte', sh.locations, 'lo')}
+      <button class="btn ghost" data-act="clearmarks">Streichungen zurücksetzen</button>`;
+  }
+  function notesDrawerHTML() {
+    return `<div class="dr-head"><h2>Hinweise</h2><button class="dr-x" data-act="closedrawer" aria-label="Schließen">✕</button></div>
+      <p class="muted dr-sub">Deine beiden Stapel, immer offen zum Nachdenken.</p>
+      ${notesHTML()}
+      <h2 class="dr-h2">Verlauf</h2><div class="feed">${feedHTML()}</div>`;
   }
 
   function statusText() {
@@ -391,55 +425,96 @@
     if (S.ui.sel !== null && (!st.hand.includes(S.ui.sel) || !selectable(S.ui.sel))) S.ui.sel = null;
 
     const status = statusText();
-    const handCards = [];
-    for (let i = 0; i < 5; i++) {
-      const id = st.hand[i];
-      if (id === undefined) { handCards.push('<div></div>'); continue; }
-      const ok = selectable(id);
-      handCards.push(`<button class="card-btn slot-card ${S.ui.sel === id ? 'sel' : ''} ${(clueMode || myTurn) && !ok ? 'dim' : ''}" data-act="sel" data-id="${id}" aria-pressed="${S.ui.sel === id}">${cardHTML(id)}</button>`);
-    }
+    let line = status.text;
+    if (S.ui.sel !== null) { const f = feats(S.ui.sel); line = `${f.c.name} · ${f.a.name} · ${f.l.name}`; }
 
-    let picked = '';
-    if (S.ui.sel !== null) {
-      const f = feats(S.ui.sel);
-      picked = `<div class="picked"><div>${cardHTML(S.ui.sel)}</div>
-        <div class="names"><b>${esc(f.c.name)}</b>${esc(f.a.name)} · ${esc(f.l.name)}
-          <span class="muted" style="display:block;font-size:12px;margin-top:4px">${clueMode ? 'Geht an den linken Nachbarn.' : 'Alle sehen, ob sie zu dir passt.'}</span></div></div>`;
-    }
+    const handCards = st.hand.map((id, i) => {
+      const ok = selectable(id);
+      const mid = (st.hand.length - 1) / 2;
+      return `<button class="card-btn slot-card ${S.ui.sel === id ? 'sel' : ''} ${(clueMode || myTurn) && !ok ? 'dim' : ''}" style="--i:${i - mid};--z:${i}" data-act="sel" data-id="${id}" aria-pressed="${S.ui.sel === id}">${cardHTML(id)}</button>`;
+    });
+
     let actions = '';
     if (clueMode) {
-      actions = `<div class="actions"><button class="btn primary full" data-act="giveclue" ${S.ui.sel === null ? 'disabled' : ''}>Hinweis geben</button></div>`;
+      actions = `<button class="btn primary" data-act="giveclue" ${S.ui.sel === null ? 'disabled' : ''}>Hinweis geben</button>`;
     } else if (myTurn) {
-      actions = `<div class="actions">
-        <button class="btn primary" data-act="play" ${S.ui.sel === null ? 'disabled' : ''}>Karte ausspielen</button>
-        <button class="btn" data-act="openguess">Raten</button></div>`;
+      actions = `<button class="btn yes" data-act="play" ${S.ui.sel === null ? 'disabled' : ''}>Ausspielen</button>
+        <button class="btn primary" data-act="openguess">Raten</button>`;
     }
+    if (actions && S.ui.sel !== null) actions += `<button class="btn ghost zoom-btn" data-act="zoomsel" aria-label="Karte groß ansehen">🔍</button>`;
 
+    $app.className = 'game-app';
     $app.innerHTML = `
       <div class="topbar">
-        <span class="chip" title="Lobby-Code">🔑 ${esc(S.code)}</span>
+        <button class="icon-btn" data-act="opennotes" aria-label="Hinweise und Verlauf">📋</button>
         <span class="grow">${S.open ? LOGO('tb') : '<span class="chip">Verbinde …</span>'}</span>
+        <span class="chip" title="Lobby-Code">🔑 ${esc(S.code)}</span>
+        <button class="icon-btn" data-act="openoverview" aria-label="Übersichtskarte">🗂</button>
         <button class="icon-btn" data-act="rules" aria-label="Spielregeln">?</button>
         <button class="icon-btn" data-act="leavepage" aria-label="Spiel verlassen">⎋</button>
       </div>
-      <section class="stage" aria-label="Spieltisch">
+      <div class="statusline ${status.mine ? 'mine' : ''}">${esc(line)}</div>
+      <section class="board" aria-label="Spieltisch">
         <span class="lantern l"></span><span class="lantern r"></span>
         <div class="table-surface"></div>
         ${others.map((i, k) => seatHTML(st.players[i], i, false, pos[k])).join('')}
         ${centerHTML()}
-        ${seatHTML(me, st.you, true, [50, 67])}
-      </section>
-      <section class="stage-info">
-        <div class="status ${status.mine ? 'mine' : ''}">${esc(status.text)}</div>
-        <div class="feed">${feedHTML()}</div>
-      </section>
-      ${notesHTML()}
-      <section class="tray">
-        ${picked}
-        ${actions}
+        ${tickerHTML()}
+        ${actions ? `<div class="actions-row">${actions}</div>` : ''}
+        ${seatHTML(me, st.you, true, null)}
         <div class="hand" aria-label="Deine Handkarten">${handCards.join('')}</div>
       </section>`;
   }
+
+  /* ------------------------------------------- Seiten-Schubladen */
+
+  function ensureDrawers() {
+    if (document.getElementById('dr-left')) return;
+    document.body.insertAdjacentHTML('beforeend',
+      '<div id="dr-scrim"></div><aside id="dr-left" class="drawer left" aria-hidden="true"></aside><aside id="dr-right" class="drawer right" aria-hidden="true"></aside>');
+    document.getElementById('dr-scrim').addEventListener('click', () => setDrawer(null));
+  }
+  function setDrawer(which) {
+    S.ui.drawer = which;
+    renderDrawers();
+  }
+  function renderDrawers() {
+    ensureDrawers();
+    const inGame = !!(S.st && S.st.phase !== 'lobby');
+    const w = inGame ? S.ui.drawer : null;
+    const L = document.getElementById('dr-left');
+    const R = document.getElementById('dr-right');
+    if (inGame && w === 'notes') { const keep = L.scrollTop; L.innerHTML = notesDrawerHTML(); L.scrollTop = keep; }
+    if (inGame && w === 'overview') { const keep = R.scrollTop; R.innerHTML = overviewHTML(); R.scrollTop = keep; }
+    L.classList.toggle('open', w === 'notes');
+    R.classList.toggle('open', w === 'overview');
+    L.setAttribute('aria-hidden', String(w !== 'notes'));
+    R.setAttribute('aria-hidden', String(w !== 'overview'));
+    document.getElementById('dr-scrim').classList.toggle('on', !!w);
+  }
+
+  /** Wischen vom Rand: links -> Hinweise, rechts -> Übersichtskarte; zum Schließen zurückwischen */
+  (() => {
+    let t0 = null;
+    const EDGE = 26;
+    document.addEventListener('touchstart', (e) => {
+      if (!S.st || S.st.phase === 'lobby' || S.ui.modal || e.touches.length !== 1) { t0 = null; return; }
+      const t = e.touches[0];
+      const w = window.innerWidth;
+      t0 = { x: t.clientX, y: t.clientY, edge: t.clientX < EDGE ? 'l' : t.clientX > w - EDGE ? 'r' : null, inL: !!e.target.closest('#dr-left'), inR: !!e.target.closest('#dr-right') };
+    }, { passive: true });
+    document.addEventListener('touchend', (e) => {
+      if (!t0) return;
+      const t = e.changedTouches[0];
+      const dx = t.clientX - t0.x; const dy = t.clientY - t0.y;
+      const s = t0; t0 = null;
+      if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.4) return;
+      if (S.ui.drawer === 'notes' && dx < 0) setDrawer(null);
+      else if (S.ui.drawer === 'overview' && dx > 0) setDrawer(null);
+      else if (!S.ui.drawer && s.edge === 'l' && dx > 0) setDrawer('notes');
+      else if (!S.ui.drawer && s.edge === 'r' && dx < 0) setDrawer('overview');
+    }, { passive: true });
+  })();
 
   /* ----------------------------------------------------- Modale */
 
@@ -559,7 +634,7 @@
     S.leaving = true;
     send({ type: 'leave' });
     S.session = null; LS.del('unknown.session');
-    S.st = null; S.ui.modal = null; S.ui.sel = null; S.ui.hideEnd = false;
+    S.st = null; S.ui.modal = null; S.ui.sel = null; S.ui.hideEnd = false; S.ui.drawer = null; S.ui.marks = { c: {}, a: {}, l: {} };
     render();
   }
 
@@ -621,10 +696,15 @@
       S.ui.modal = null; renderModals();
     },
     pile(t) { S.ui.modal = { type: 'pile', pid: t.dataset.pid }; renderModals(); },
-    togglenotes() { S.ui.notes = !S.ui.notes; render(); },
+    opennotes() { setDrawer('notes'); },
+    openoverview() { setDrawer('overview'); },
+    closedrawer() { setDrawer(null); },
+    mark(t) { const m = S.ui.marks[t.dataset.k]; const v = t.dataset.v; m[v] = !m[v]; renderDrawers(); },
+    clearmarks() { S.ui.marks = { c: {}, a: {}, l: {} }; renderDrawers(); },
+    zoomsel() { if (S.ui.sel !== null) { S.ui.modal = { type: 'zoom', id: S.ui.sel }; renderModals(); } },
     zoom(t) { S.ui.modal = { type: 'zoom', id: Number(t.dataset.id) }; renderModals(); },
     flip(t) { send({ type: 'flip', pile: t.dataset.pile }); },
-    rematch() { send({ type: 'rematch' }); },
+    rematch() { S.ui.marks = { c: {}, a: {}, l: {} }; send({ type: 'rematch' }); },
     hideend() { S.ui.hideEnd = true; renderModals(); },
   };
 
@@ -643,7 +723,7 @@
   });
 
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && S.ui.modal) actions.close();
+    if (e.key === 'Escape') { if (S.ui.modal) actions.close(); else if (S.ui.drawer) setDrawer(null); }
     if (e.key === 'Enter' && e.target.id === 'in-code') actions.join();
   });
 
@@ -667,5 +747,6 @@
     render();
     connect();
   }
+  if (location.search.includes('debug')) window.__unknown = { cardHTML, S };
   init();
 })();
