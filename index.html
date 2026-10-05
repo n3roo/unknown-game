@@ -818,6 +818,7 @@ function renderHand(){
 }
 
 
+
 function togglePile(type){
   const player = gameState?.players[myIndex];
   if(!player) return;
@@ -834,6 +835,25 @@ function togglePile(type){
     alert("Dieser Stapel ist verdeckt!");
     return;
   }
+
+  $("pilePopupTitle").textContent =
+    type === "related" ? "RELATED" : "NOT RELATED";
+
+  $("pilePopupCards").innerHTML = cards.map(card => `
+    <div class="card">
+      <strong>${escapeHtml(card.character)}</strong>
+      <span>🎩 ${escapeHtml(card.accessory)}</span>
+      <span>📍 ${escapeHtml(card.location)}</span>
+    </div>
+  `).join("");
+
+  $("pilePopup").style.display = "flex";
+}
+
+function closePile(){
+  $("pilePopup").style.display = "none";
+}
+
 
   alert(cards.length + " Karten im Stapel");
 }
