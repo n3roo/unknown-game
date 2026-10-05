@@ -74,6 +74,11 @@
     const a = avatarDef(id);
     return `<span class="avatar" style="--c:${esc(a.color)};--s:${size}px" title="${esc(a.name)}">${a.emoji}<img src="assets/avatars/${esc(a.id)}_head.png" alt="" loading="lazy" onerror="this.remove()"></span>`;
   }
+  function figHTML(id, cls = '') {
+    const a = avatarDef(id);
+    return `<span class="fig ${cls}"><b aria-hidden="true">${a.emoji}</b><img src="assets/avatars/${esc(a.id)}_cut.png" alt="${esc(a.name)}" onerror="this.remove()"></span>`;
+  }
+  const LOGO = (cls = '') => `<img class="logo-img ${cls}" src="assets/logo.png" alt="UNKNOWN" draggable="false">`;
   function avatarPicker(selected, taken = []) {
     return `<div class="avatar-grid" role="group" aria-label="Avatar wählen">${S.data.avatars.map((a) => {
       const isTaken = taken.includes(a.id) && a.id !== selected;
@@ -162,7 +167,7 @@
 
   function renderResume() {
     $app.innerHTML = `
-      <h1 class="logo">Unknown</h1>
+      <h1 class="logo-h">${LOGO()}</h1>
       <section class="panel stack center">
         <p style="margin:6px 0">Du kehrst in deine Lobby ${esc(S.session.code)} zurück …</p>
         <button class="btn ghost" data-act="cancelresume">Abbrechen</button>
@@ -173,8 +178,9 @@
     const prefill = (new URLSearchParams(location.search).get('code') || '').toUpperCase().slice(0, 4);
     if (!S.data.avatars.some((a) => a.id === S.profile.avatar)) S.profile.avatar = S.data.avatars[0].id;
     $app.innerHTML = `
-      <h1 class="logo">Unknown</h1>
+      <h1 class="logo-h">${LOGO()}</h1>
       <p class="tagline">Alle sehen, wer du bist. Nur du nicht.</p>
+      <div class="hero" id="hero">${figHTML(S.profile.avatar, 'hero-fig')}</div>
       <section class="panel stack">
         <label class="field"><span>Dein Name</span>
           <input id="in-name" type="text" maxlength="16" autocomplete="nickname" placeholder="z. B. Mia" value="${esc(S.profile.name)}"></label>
@@ -207,7 +213,7 @@
     }
     const canStart = isHost && st.players.length >= 2;
     $app.innerHTML = `
-      <h1 class="logo small">Unknown</h1>
+      <h1 class="logo-h">${LOGO("sm")}</h1>
       <section class="panel stack">
         <div class="code-box"><div><span class="muted" style="font-size:13px">Lobby-Code</span><br><strong>${esc(S.code)}</strong></div>
           <button class="btn small primary" data-act="share">Einladen</button></div>
@@ -227,35 +233,59 @@
       </section>`;
   }
 
-  function seatHTML(p, i, isMe) {
+  const SEAT_POS = {
+    1: [[50, 4]],
+    2: [[24, 8], [76, 8]],
+    3: [[13, 33], [50, 2], [87, 33]],
+  };
+
+  function pileBtn(p, which) {
+    const yes = which === 'related';
+    const count = yes ? p.relatedCount : p.notRelatedCount;
+    const hidden = p.flipped[which];
+    return `<button class="pm ${yes ? 'yes' : 'no'} ${hidden ? 'hid' : ''}" data-act="pile" data-pid="${esc(p.id)}" data-which="${which}" aria-label="${esc(p.name)}: ${yes ? 'passt' : 'passt nicht'}, ${count} Karten${hidden ? ', umgedreht' : ''}">
+      <i>${hidden ? '🔒' : yes ? '✓' : '✕'}</i><b>${count}</b></button>`;
+  }
+
+  function seatHTML(p, i, isMe, pos) {
     const st = S.st;
     const turn = st.phase === 'playing' && st.current === i && !p.out;
     const secret = p.secret !== null
-      ? `<button class="card-btn secret" data-act="zoom" data-id="${p.secret}" aria-label="Verdächtigen von ${esc(p.name)} ansehen">${cardHTML(p.secret)}</button>`
-      : `<div class="secret">${backHTML()}</div>`;
+      ? `<button class="card-btn s3-secret" data-act="zoom" data-id="${p.secret}" aria-label="Verdächtigen von ${esc(p.name)} ansehen">${cardHTML(p.secret)}</button>`
+      : `<div class="s3-secret">${backHTML()}</div>`;
     const pips = [0, 1, 2].map((k) => `<span class="pip ${k < p.wrong ? 'on' : ''}"></span>`).join('');
-    const pile = (which, icon, label, cls, count) =>
-      `<button class="pile ${cls}" data-act="pile" data-pid="${esc(p.id)}" data-which="${which}" aria-label="${esc(p.name)}: ${label}-Stapel mit ${count} Karten">${icon} ${count}<small>${p.flipped[which] ? 'verdeckt' : label}</small></button>`;
     let tag = '';
-    if (p.out) tag = 'ausgeschieden';
+    if (p.out) tag = 'raus';
     else if (!p.connected) tag = 'getrennt';
-    else if (turn) tag = 'am Zug';
-    else if (st.phase === 'clues' && !p.clueGiven) tag = 'überlegt …';
-    const who = `<div class="who">${avatarHTML(p.avatar, isMe ? 40 : 30)}<span class="nm">${esc(p.name)}</span></div>`;
-    const piles = `<div class="piles">${pile('related', '✓', 'passt', 'yes', p.relatedCount)}${pile('notRelated', '✕', 'passt nicht', 'no', p.notRelatedCount)}</div>`;
-    if (isMe) {
-      return `<section class="seat me ${turn ? 'turn' : ''} ${p.out ? 'out' : ''}">
-        ${secret}
-        <div class="info">${who}<div class="pips" title="Falsche Tipps">${pips}</div>${piles}<div class="state">${tag}</div></div>
-      </section>`;
+    else if (st.phase === 'clues' && !p.clueGiven) tag = 'überlegt';
+    const style = `left:${pos[0]}%;top:${pos[1]}%`;
+    return `<div class="s3 ${isMe ? 'me' : ''} ${turn ? 'turn' : ''} ${p.out ? 'out' : ''}" style="${style}">
+      ${secret}
+      <div class="s3-fig">${figHTML(p.avatar)}</div>
+      <div class="s3-plate"><span class="nm">${esc(p.name)}</span><span class="pips" title="Falsche Tipps">${pips}</span>${tag ? `<em>${tag}</em>` : ''}</div>
+      <div class="s3-piles">${pileBtn(p, 'related')}${pileBtn(p, 'notRelated')}</div>
+    </div>`;
+  }
+
+  function centerHTML() {
+    const st = S.st;
+    const last = [...st.events].reverse().find((e) => e.type === 'play' || e.type === 'guess');
+    let card = '<div class="last-empty">Noch keine Karte</div>';
+    if (last) {
+      const p = byId(last.player);
+      const ok = last.type === 'play' ? last.related : last.ok;
+      const label = last.type === 'play' ? (ok ? 'Passt' : 'Passt nicht') : (ok ? 'Richtig' : 'Falsch');
+      card = `<div class="last"><div class="last-card">${cardHTML(last.card)}</div>
+        <div class="stamp ${ok ? 'yes' : 'no'}" title="${esc(p ? p.name : '')}">${label}</div></div>`;
     }
-    return `<div class="seat ${turn ? 'turn' : ''} ${p.out ? 'out' : ''}">
-      ${secret}${who}<div class="pips" title="Falsche Tipps">${pips}</div>${piles}<div class="state">${tag}</div>
+    return `<div class="center">
+      <div class="deck" title="Nachziehstapel"><div class="deck-card">${backHTML()}</div><span class="deck-n">${st.deckCount}</span></div>
+      ${card}
     </div>`;
   }
 
   function feedHTML() {
-    const items = S.st.events.filter((e) => ['play', 'guess', 'flip', 'out'].includes(e.type)).slice(-3).reverse();
+    const items = S.st.events.filter((e) => ['play', 'guess', 'flip', 'out'].includes(e.type)).slice(-2).reverse();
     return items.map((ev) => {
       const p = byId(ev.player);
       const name = `<b>${esc(p ? p.name : '?')}</b>`;
@@ -303,6 +333,7 @@
     const n = st.players.length;
     const others = [];
     for (let k = 1; k < n; k++) others.push((st.you + k) % n);
+    const pos = SEAT_POS[others.length] || SEAT_POS[3];
 
     const myTurn = st.phase === 'playing' && st.current === st.you && !st.pending && !me.out;
     const clueMode = st.phase === 'clues' && !!st.clue;
@@ -337,17 +368,20 @@
     $app.innerHTML = `
       <div class="topbar">
         <span class="chip" title="Lobby-Code">🔑 ${esc(S.code)}</span>
-        <span class="grow">${S.open ? '' : '<span class="chip">Verbinde …</span>'}</span>
-        <span class="chip" title="Karten im Nachziehstapel">🂠 ${st.deckCount}</span>
+        <span class="grow">${S.open ? LOGO('tb') : '<span class="chip">Verbinde …</span>'}</span>
         <button class="icon-btn" data-act="rules" aria-label="Spielregeln">?</button>
         <button class="icon-btn" data-act="leavepage" aria-label="Spiel verlassen">⎋</button>
       </div>
-      <section class="seats" style="--n:${others.length}">${others.map((i) => seatHTML(st.players[i], i, false)).join('')}</section>
-      <section class="stage">
+      <section class="stage" aria-label="Spieltisch">
+        <div class="table-surface"></div>
+        ${others.map((i, k) => seatHTML(st.players[i], i, false, pos[k])).join('')}
+        ${centerHTML()}
+        ${seatHTML(me, st.you, true, [50, 60])}
+      </section>
+      <section class="stage-info">
         <div class="status ${status.mine ? 'mine' : ''}">${esc(status.text)}</div>
         <div class="feed">${feedHTML()}</div>
       </section>
-      ${seatHTML(me, st.you, true)}
       <section class="tray">
         ${picked}
         ${actions}
@@ -494,6 +528,8 @@
       if (S.st) { send({ type: 'avatar', avatar: id }); return; }
       S.profile.avatar = id; saveProfile();
       document.querySelectorAll('.avatar-pick').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.id === id)));
+      const hero = document.getElementById('hero');
+      if (hero) hero.innerHTML = figHTML(id, 'hero-fig');
     },
     create() {
       S.profile.name = document.getElementById('in-name').value.trim();
