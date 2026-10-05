@@ -818,6 +818,27 @@ function renderHand(){
 }
 
 
+function togglePile(type){
+  const player = gameState?.players[myIndex];
+  if(!player) return;
+
+  const cards = type === "related"
+    ? player.related
+    : player.notRelated;
+
+  const flipped = type === "related"
+    ? player.relatedFlipped
+    : player.notRelatedFlipped;
+
+  if(flipped || !cards){
+    alert("Dieser Stapel ist verdeckt!");
+    return;
+  }
+
+  alert(cards.length + " Karten im Stapel");
+}
+
+  
 function renderPiles(){
 
   const player=
