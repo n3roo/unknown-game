@@ -72,7 +72,7 @@
   }
   function avatarHTML(id, size = 44) {
     const a = avatarDef(id);
-    return `<span class="avatar" style="--c:${esc(a.color)};--s:${size}px" title="${esc(a.name)}">${a.emoji}<img src="assets/avatars/${esc(a.id)}.png" alt="" onerror="this.remove()"></span>`;
+    return `<span class="avatar" style="--c:${esc(a.color)};--s:${size}px" title="${esc(a.name)}">${a.emoji}<img src="assets/avatars/${esc(a.id)}_head.png" alt="" loading="lazy" onerror="this.remove()"></span>`;
   }
   function avatarPicker(selected, taken = []) {
     return `<div class="avatar-grid" role="group" aria-label="Avatar wählen">${S.data.avatars.map((a) => {
@@ -171,7 +171,7 @@
 
   function renderHome() {
     const prefill = (new URLSearchParams(location.search).get('code') || '').toUpperCase().slice(0, 4);
-    if (!S.profile.avatar) S.profile.avatar = S.data.avatars[0].id;
+    if (!S.data.avatars.some((a) => a.id === S.profile.avatar)) S.profile.avatar = S.data.avatars[0].id;
     $app.innerHTML = `
       <h1 class="logo">Unknown</h1>
       <p class="tagline">Alle sehen, wer du bist. Nur du nicht.</p>

@@ -3,7 +3,7 @@
   { "id": "alien",   "name": "Alien",      "emoji": "👽", "color": "#5fc43a" },
   { "id": "geist",   "name": "Geist",      "emoji": "👻", "color": "#7fb8ff" },
   { "id": "pinguin", "name": "Pinguin",    "emoji": "🐧", "color": "#2f6fd0" },
-  { "id": "kappe",   "name": "Kappe",      "emoji": "🧢", "color": "#e9e4da" },
+  { "id": "weiss",   "name": "Weißling",   "emoji": "⚪", "color": "#e9e4da" },
   { "id": "schatten","name": "Schatten",   "emoji": "🥷", "color": "#2b2b30" },
   { "id": "hase",    "name": "Hase",       "emoji": "🐰", "color": "#f06fb0" },
   { "id": "schleim", "name": "Schleim",    "emoji": "🟡", "color": "#f2c22b" },
