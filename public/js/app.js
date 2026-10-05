@@ -26,7 +26,7 @@
     reconnectDelay: 800,
     noReconnect: false,
     pingTimer: null,
-    ui: { sel: null, modal: null, guess: { sel: {}, order: [], auto: null }, pickAvatar: false, hideEnd: false },
+    ui: { notes: true, sel: null, modal: null, guess: { sel: {} }, pickAvatar: false, hideEnd: false },
   };
 
   /* ------------------------------------------------------ Helfer */
@@ -47,8 +47,9 @@
     const sets = S.data.sets.sets;
     return sets.find((s) => s.id === S.setId) || sets[0];
   }
-  function feats(id) {
-    const { c, a, l } = dec(id);
+  /** id (Zahl) oder { c, a, l } -> die drei Merkmale als Objekte */
+  function feats(x) {
+    const { c, a, l } = typeof x === 'object' ? x : dec(x);
     const sh = S.data.sets.shared;
     return { c: setDef().characters[c], a: sh.accessories[a], l: sh.locations[l] };
   }
@@ -57,14 +58,27 @@
 
   /* --------------------------------------------------- Bausteine */
 
-  function cardHTML(id, cls = '') {
-    const f = feats(id);
-    const label = `${f.c.name}, ${f.a.name}, ${f.l.name}`;
+  /** Karte: Charakter mit Kopfbedeckung/Accessoire vor dem Ort, in einem Bild. */
+  function cardHTML(x, cls = '') {
+    const f = feats(x);
+    const ch = f.c; const ac = f.a; const hd = ch.head; const w = ac.wear;
+    const label = `${ch.name}, ${ac.name}, ${f.l.name}`;
+    const left = (hd.cx * 100).toFixed(1);
+    const width = (hd.w * w.scale * 100).toFixed(1);
+    let top; let tf;
+    if (w.type === 'eyes') { top = hd.eye * 100; tf = 'translate(-50%,-50%)'; }
+    else if (w.type === 'phones') { top = (hd.top + w.dy * hd.hh) * 100; tf = 'translate(-50%,-66%)'; }
+    else { top = (hd.top + w.dy * hd.hh) * 100; tf = `translate(-50%,-100%) rotate(${w.rot || 0}deg)`; }
+    const accImg = `<img class="acc ${w.behind ? 'behind' : ''}" src="${esc(ac.cut)}" alt="" draggable="false" style="left:${left}%;top:${top.toFixed(1)}%;width:${width}%;transform:${tf}">`;
     return `<div class="card ${cls}" role="img" aria-label="${esc(label)}"><div class="card-face">
-      <div class="c-char"><img src="${esc(f.c.img)}" alt="" draggable="false"></div>
-      <div class="c-loc"><img src="${esc(f.l.img)}" alt="" draggable="false"></div>
-      <div class="c-acc"><img src="${esc(f.a.img)}" alt="" draggable="false"></div>
-      <div class="c-cap">${esc(f.c.name)} · ${esc(f.a.name)} · ${esc(f.l.name)}</div>
+      <div class="pic">
+        <img class="bg" src="${esc(f.l.img)}" alt="" draggable="false">
+        <div class="who" style="--ar:${ch.ar};--h:${ch.scale || 128}%;--cx:${left}%">
+          ${accImg}
+          <img class="ch" src="${esc(ch.cut)}" alt="" draggable="false">
+        </div>
+      </div>
+      <div class="c-cap">${esc(ch.name)} · ${esc(ac.name)} · ${esc(f.l.name)}</div>
     </div></div>`;
   }
   function backHTML() {
@@ -158,6 +172,7 @@
 
   function render() {
     if (!S.data) return;
+    document.body.classList.toggle('room', !!(S.st && S.st.phase !== 'lobby'));
     if (!S.st && S.session) renderResume();
     else if (!S.st) renderHome();
     else if (S.st.phase === 'lobby') renderLobby();
@@ -236,15 +251,21 @@
   const SEAT_POS = {
     1: [[50, 4]],
     2: [[24, 8], [76, 8]],
-    3: [[13, 33], [50, 2], [87, 33]],
+    3: [[15, 33], [50, 2], [85, 33]],
   };
 
-  function pileBtn(p, which) {
+  /** Stapel auf dem Tisch: oberste Karte sichtbar, Zahl als Marke, Tippen öffnet beide Stapel des Spielers. */
+  function pileStack(p, which) {
     const yes = which === 'related';
+    const cards = p[which];
     const count = yes ? p.relatedCount : p.notRelatedCount;
     const hidden = p.flipped[which];
-    return `<button class="pm ${yes ? 'yes' : 'no'} ${hidden ? 'hid' : ''}" data-act="pile" data-pid="${esc(p.id)}" data-which="${which}" aria-label="${esc(p.name)}: ${yes ? 'passt' : 'passt nicht'}, ${count} Karten${hidden ? ', umgedreht' : ''}">
-      <i>${hidden ? '🔒' : yes ? '✓' : '✕'}</i><b>${count}</b></button>`;
+    let face;
+    if (hidden) face = backHTML();
+    else if (cards && cards.length) face = cardHTML(cards[cards.length - 1]);
+    else face = '<div class="ps-empty"></div>';
+    return `<button class="ps ${yes ? 'yes' : 'no'} ${hidden ? 'hid' : ''} ${count > 1 && !hidden ? 'multi' : ''}" data-act="pile" data-pid="${esc(p.id)}" aria-label="${esc(p.name)}: ${yes ? 'passt' : 'passt nicht'}, ${count} Karten${hidden ? ', umgedreht' : ''}">
+      <span class="ps-card">${face}</span><span class="ps-n">${hidden ? '🔒 ' : ''}${count}</span></button>`;
   }
 
   function seatHTML(p, i, isMe, pos) {
@@ -258,13 +279,42 @@
     if (p.out) tag = 'raus';
     else if (!p.connected) tag = 'getrennt';
     else if (st.phase === 'clues' && !p.clueGiven) tag = 'überlegt';
+    const plate = `<div class="s3-plate"><span class="nm">${esc(p.name)}</span><span class="pips" title="Falsche Tipps">${pips}</span>${tag ? `<em>${tag}</em>` : ''}</div>`;
     const style = `left:${pos[0]}%;top:${pos[1]}%`;
-    return `<div class="s3 ${isMe ? 'me' : ''} ${turn ? 'turn' : ''} ${p.out ? 'out' : ''}" style="${style}">
+    if (isMe) {
+      return `<div class="s3 me ${turn ? 'turn' : ''} ${p.out ? 'out' : ''}" style="${style}">
+        <div class="me-side">${pileStack(p, 'related')}</div>
+        <div class="me-mid">${secret}<div class="me-bust">${figHTML(p.avatar)}</div>${plate}</div>
+        <div class="me-side">${pileStack(p, 'notRelated')}</div>
+      </div>`;
+    }
+    return `<div class="s3 ${pos[1] < 15 ? 'back' : ''} ${turn ? 'turn' : ''} ${p.out ? 'out' : ''}" style="${style}">
       ${secret}
       <div class="s3-fig">${figHTML(p.avatar)}</div>
-      <div class="s3-plate"><span class="nm">${esc(p.name)}</span><span class="pips" title="Falsche Tipps">${pips}</span>${tag ? `<em>${tag}</em>` : ''}</div>
-      <div class="s3-piles">${pileBtn(p, 'related')}${pileBtn(p, 'notRelated')}</div>
+      ${plate}
+      <div class="s3-piles">${pileStack(p, 'related')}${pileStack(p, 'notRelated')}</div>
     </div>`;
+  }
+
+  /** Meine beiden Stapel, dauerhaft offen (zum Nachdenken). */
+  function notesHTML() {
+    const st = S.st;
+    const me = st.players[st.you];
+    const open = S.ui.notes;
+    const col = (which, cls, title) => {
+      const cards = me[which];
+      const count = which === 'related' ? me.relatedCount : me.notRelatedCount;
+      const body = cards === null
+        ? '<p class="notes-empty">Umgedreht, nicht mehr sichtbar.</p>'
+        : cards.length === 0
+          ? '<p class="notes-empty">Noch keine Karten.</p>'
+          : `<div class="notes-grid">${cards.map((id) => `<button class="card-btn" data-act="zoom" data-id="${id}">${cardHTML(id)}</button>`).join('')}</div>`;
+      return `<div class="notes-col ${cls}"><h4>${title} <span>${count}</span></h4>${body}</div>`;
+    };
+    return `<section class="notes">
+      <button class="notes-toggle" data-act="togglenotes" aria-expanded="${open}">Deine Hinweise <span>${open ? 'ausblenden' : 'einblenden'}</span></button>
+      ${open ? `<div class="notes-cols">${col('related', 'yes', '✓ Passt')}${col('notRelated', 'no', '✕ Passt nicht')}</div>` : ''}
+    </section>`;
   }
 
   function centerHTML() {
@@ -275,7 +325,7 @@
       const p = byId(last.player);
       const ok = last.type === 'play' ? last.related : last.ok;
       const label = last.type === 'play' ? (ok ? 'Passt' : 'Passt nicht') : (ok ? 'Richtig' : 'Falsch');
-      card = `<div class="last"><div class="last-card">${cardHTML(last.card)}</div>
+      card = `<div class="last"><div class="last-card">${cardHTML(last.type === 'guess' ? last.guess : last.card)}</div>
         <div class="stamp ${ok ? 'yes' : 'no'}" title="${esc(p ? p.name : '')}">${label}</div></div>`;
     }
     return `<div class="center">
@@ -293,7 +343,7 @@
         return `<div class="feed-item"><div class="mini">${cardHTML(ev.card)}</div><span>${name} legt aus</span><span class="stamp ${ev.related ? 'yes' : 'no'}">${ev.related ? 'Passt' : 'Passt nicht'}</span></div>`;
       }
       if (ev.type === 'guess') {
-        return `<div class="feed-item"><div class="mini">${cardHTML(ev.card)}</div><span>${name} rät</span><span class="stamp ${ev.ok ? 'yes' : 'no'}">${ev.ok ? 'Richtig' : 'Falsch'}</span></div>`;
+        return `<div class="feed-item"><div class="mini">${cardHTML(ev.guess)}</div><span>${name} rät</span><span class="stamp ${ev.ok ? 'yes' : 'no'}">${ev.ok ? 'Richtig' : 'Falsch'}</span></div>`;
       }
       if (ev.type === 'flip') {
         return `<div class="feed-item"><span>${name} dreht den ${ev.pile === 'related' ? '„passt“' : '„passt nicht“'}-Stapel um${ev.auto ? ' (zweiter Fehler)' : ''}</span></div>`;
@@ -373,15 +423,17 @@
         <button class="icon-btn" data-act="leavepage" aria-label="Spiel verlassen">⎋</button>
       </div>
       <section class="stage" aria-label="Spieltisch">
+        <span class="lantern l"></span><span class="lantern r"></span>
         <div class="table-surface"></div>
         ${others.map((i, k) => seatHTML(st.players[i], i, false, pos[k])).join('')}
         ${centerHTML()}
-        ${seatHTML(me, st.you, true, [50, 60])}
+        ${seatHTML(me, st.you, true, [50, 67])}
       </section>
       <section class="stage-info">
         <div class="status ${status.mine ? 'mine' : ''}">${esc(status.text)}</div>
         <div class="feed">${feedHTML()}</div>
       </section>
+      ${notesHTML()}
       <section class="tray">
         ${picked}
         ${actions}
@@ -398,7 +450,7 @@
       <li>Es gibt 49 Karten, jede Kombination nur einmal. Zwei Karten haben höchstens ein gemeinsames Merkmal.</li>
       <li>Du hast fünf Handkarten. Am Anfang bekommst du von deinem rechten Nachbarn einen ersten Hinweis.</li>
       <li><b>Ausspielen:</b> Deine Karte kommt offen auf den Tisch. „Passt“ heißt: mindestens ein Merkmal stimmt mit deiner Geheimkarte überein. Sonst „passt nicht“. Alle sehen deine Stapel.</li>
-      <li><b>Raten:</b> Statt eine Karte zu spielen, nennst du deine Karte. Richtig gewinnt sofort.</li>
+      <li><b>Raten:</b> Statt eine Karte zu spielen, nennst du Charakter, Accessoire und Ort. Alle drei müssen stimmen, dann gewinnst du sofort.</li>
       <li>Ein falscher Tipp dreht einen deiner Stapel um (beim ersten Fehler wählst du, beim zweiten der andere). Beim dritten Fehler bist du raus.</li>
       <li>Tipp: Karten der anderen schließen Möglichkeiten aus. Eine „passt nicht“-Karte streicht gleich drei Merkmale.</li>
     </ul>`;
@@ -417,7 +469,7 @@
       const m = ui.modal;
       if (m.type === 'rules') html = `${RULES}<button class="btn" data-act="close">Verstanden</button>`;
       else if (m.type === 'zoom') html = zoomHTML(m.id);
-      else if (m.type === 'pile') html = pileHTML(m.pid, m.which);
+      else if (m.type === 'pile') html = pileHTML(m.pid);
       else if (m.type === 'guess') html = guessHTML();
       else if (m.type === 'leave') {
         html = `<h2>Spiel verlassen?</h2><p>${st && st.phase === 'lobby' ? 'Du verlässt die Lobby.' : 'Du scheidest aus der laufenden Partie aus.'}</p>
@@ -438,17 +490,22 @@
       <button class="btn" data-act="close">Schließen</button>`;
   }
 
-  function pileHTML(pid, which) {
+  function pileHTML(pid) {
     const p = byId(pid);
     if (!p) return '<p>Spieler nicht gefunden.</p><button class="btn" data-act="close">Schließen</button>';
-    const title = which === 'related' ? 'Passt' : 'Passt nicht';
-    const cards = p[which];
-    const body = cards === null
-      ? '<p>Dieser Stapel wurde nach einem falschen Tipp umgedreht. Niemand kann ihn mehr sehen.</p>'
-      : cards.length === 0
-        ? '<p class="muted">Noch keine Karten.</p>'
-        : `<div class="cards-grid">${cards.map((id) => `<button class="card-btn" data-act="zoom" data-id="${id}">${cardHTML(id)}</button>`).join('')}</div>`;
-    return `<h2>${esc(p.name)}: ${title}</h2>${body}<button class="btn" data-act="close">Schließen</button>`;
+    const sec = (which, cls, title, count) => {
+      const cards = p[which];
+      const body = cards === null
+        ? '<p class="notes-empty">Dieser Stapel wurde nach einem falschen Tipp umgedreht.</p>'
+        : cards.length === 0
+          ? '<p class="notes-empty">Noch keine Karten.</p>'
+          : `<div class="cards-grid">${cards.map((id) => `<button class="card-btn" data-act="zoom" data-id="${id}">${cardHTML(id)}</button>`).join('')}</div>`;
+      return `<div class="pile-sec ${cls}"><h3>${title} <span>${count}</span></h3>${body}</div>`;
+    };
+    return `<h2>Stapel von ${esc(p.name)}</h2>
+      ${sec('related', 'yes', '✓ Passt', p.relatedCount)}
+      ${sec('notRelated', 'no', '✕ Passt nicht', p.notRelatedCount)}
+      <button class="btn" data-act="close">Schließen</button>`;
   }
 
   function flipHTML() {
@@ -472,9 +529,9 @@
     ];
     const done = g.sel.c !== undefined && g.sel.a !== undefined && g.sel.l !== undefined;
     return `<h2>Wer bist du?</h2>
-      <p class="muted" style="margin-top:2px">Wähle zwei Merkmale. Das dritte ergibt sich, weil es jede Kombination nur einmal gibt.</p>
+      <p class="muted" style="margin-top:2px">Wähle Charakter, Accessoire und Ort. Nur wenn alle drei stimmen, gewinnst du.</p>
       ${rows.map(([k, title, list, cls]) => `<div class="guess-row"><h3>${title}</h3><div class="opts">${list.map((it, i) =>
-        `<button class="opt ${cls}" data-act="gpick" data-k="${k}" data-v="${i}" aria-pressed="${g.sel[k] === i}"><img src="${esc(it.img)}" alt=""><span>${esc(it.name)}${g.auto === k && g.sel[k] === i ? '<br><span class="auto">ergibt sich</span>' : ''}</span></button>`).join('')}</div></div>`).join('')}
+        `<button class="opt ${cls}" data-act="gpick" data-k="${k}" data-v="${i}" aria-pressed="${g.sel[k] === i}"><img src="${esc(it.img)}" alt=""><span>${esc(it.name)}</span></button>`).join('')}</div></div>`).join('')}
       <p class="hint">Ein falscher Tipp kostet dich einen Hinweisstapel.</p>
       <div class="actions"><button class="btn" data-act="close">Abbrechen</button><button class="btn primary" data-act="gsend" ${done ? '' : 'disabled'}>Tipp abgeben</button></div>`;
   }
@@ -507,18 +564,7 @@
   }
 
   function guessPick(k, v) {
-    const g = S.ui.guess;
-    g.sel[k] = v;
-    g.order = g.order.filter((x) => x !== k);
-    g.order.push(k);
-    g.auto = null;
-    if (g.order.length >= 2) {
-      const [k1, k2] = g.order.slice(-2);
-      const rest = ['c', 'a', 'l'].find((x) => x !== k1 && x !== k2);
-      const s = g.sel;
-      s[rest] = rest === 'l' ? (s.c + s.a) % N : rest === 'a' ? (s.l - s.c + N) % N : (s.l - s.a + N) % N;
-      g.auto = rest;
-    }
+    S.ui.guess.sel[k] = S.ui.guess.sel[k] === v ? undefined : v;
     renderModals();
   }
 
@@ -567,14 +613,15 @@
     },
     play() { if (S.ui.sel !== null) { send({ type: 'play', card: S.ui.sel }); S.ui.sel = null; } },
     giveclue() { if (S.ui.sel !== null) { send({ type: 'clue', card: S.ui.sel }); S.ui.sel = null; } },
-    openguess() { S.ui.guess = { sel: {}, order: [], auto: null }; S.ui.modal = { type: 'guess' }; renderModals(); },
+    openguess() { S.ui.guess = { sel: {} }; S.ui.modal = { type: 'guess' }; renderModals(); },
     gpick(t) { guessPick(t.dataset.k, Number(t.dataset.v)); },
     gsend() {
       const s = S.ui.guess.sel;
       send({ type: 'guess', c: s.c, a: s.a, l: s.l });
       S.ui.modal = null; renderModals();
     },
-    pile(t) { S.ui.modal = { type: 'pile', pid: t.dataset.pid, which: t.dataset.which }; renderModals(); },
+    pile(t) { S.ui.modal = { type: 'pile', pid: t.dataset.pid }; renderModals(); },
+    togglenotes() { S.ui.notes = !S.ui.notes; render(); },
     zoom(t) { S.ui.modal = { type: 'zoom', id: Number(t.dataset.id) }; renderModals(); },
     flip(t) { send({ type: 'flip', pile: t.dataset.pile }); },
     rematch() { send({ type: 'rematch' }); },
