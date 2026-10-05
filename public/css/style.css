@@ -418,7 +418,7 @@ input.code { text-transform: uppercase; letter-spacing: 6px; text-align: center;
 .pm.no { border-color: #b2504c; color: #f3b6b3; }
 .pm.hid { border-style: dashed; opacity: .75; }
 
-.center {
+.board .center {
   position: absolute; left: 50%; top: 48.5%; transform: translate(-50%, -50%);
   display: flex; align-items: center; gap: 3.5cqw;
 }
@@ -469,7 +469,7 @@ body.room {
 .s3 .s3-secret { z-index: 4; }
 .s3 .s3-plate, .s3 .s3-piles { z-index: 4; }
 .s3 .s3-piles { position: relative; display: flex; gap: 2.4cqw; margin-top: 1.6cqw; }
-.center { z-index: 3; }
+.board .center { z-index: 3; }
 
 /* Stapel auf dem Tisch */
 .ps { all: unset; position: relative; display: block; width: 10cqw; cursor: pointer; border-radius: 2cqw; }
@@ -522,7 +522,7 @@ body.room {
 .s3.me .me-bust .fig { filter: brightness(.5) saturate(.8) drop-shadow(0 0 2cqw rgba(255,190,110,.35)); }
 
 .table-surface { top: 21%; }
-.center { top: 55%; }
+.board .center { top: 55%; }
 .s3.me .me-bust { height: 19cqw; width: 30cqw; }
 .s3.me .me-bust .fig { height: 30cqw; }
 .s3.me .me-mid { width: 30cqw; }
@@ -534,7 +534,7 @@ body.room {
 .s3 .ps { width: 9.4cqw; }
 .s3.me { width: 78cqw; margin-left: -39cqw; }
 .s3.me .me-side .ps { width: 12.5cqw; }
-.center { top: 50%; }
+.board .center { top: 50%; }
 .opts { grid-auto-columns: 88px; }
 .opt { font-size: 10.5px; }
 .opt span { overflow-wrap: normal; word-break: normal; hyphens: auto; }
@@ -702,3 +702,86 @@ body.room {
 .card.painted .c-cap { display: none; }
 .card.painted .pic .art { z-index: 1; object-fit: fill; }
 .card.painted .pic { position: absolute; inset: 0; }
+
+/* =====================================================================
+   Hauptmenü: Nachtlook wie in den Mockups
+   ===================================================================== */
+body.night {
+  background:
+    radial-gradient(circle at 82% 8%, rgba(255,243,200,.55) 0 2.2%, rgba(255,243,200,.0) 2.6%),
+    radial-gradient(ellipse 80% 40% at 50% 0%, rgba(80,70,170,.40), transparent 70%),
+    radial-gradient(ellipse 90% 40% at 50% 105%, rgba(255,150,60,.22), transparent 70%),
+    linear-gradient(180deg, #121536 0%, #0c0e24 45%, #0a0710 100%);
+  background-attachment: fixed;
+}
+body.night .logo-img { filter: drop-shadow(0 4px 12px rgba(0,0,0,.7)) drop-shadow(0 0 14px rgba(255,255,255,.18)); }
+.home-top { display: grid; grid-template-columns: 1fr 1fr; align-items: center; gap: 4px; }
+.home-top .hero { height: 190px; margin: 0; }
+.home-top .hero .hero-fig { width: 190px; height: 190px; }
+.home-top .hero::before { background: radial-gradient(ellipse, rgba(120,150,255,.35), transparent 70%); }
+.profile { display: grid; gap: 8px; padding-right: 2px; }
+.profile input[type=text] { background: rgba(10,12,36,.7); border-color: #3a4180; }
+.profile .field { margin: 0; }
+.tile-big {
+  all: unset; box-sizing: border-box; display: flex; align-items: center; gap: 10px; cursor: pointer;
+  width: 100%; min-height: 84px; padding: 12px 16px; border-radius: 20px; position: relative; overflow: hidden;
+  box-shadow: 0 5px 0 rgba(0,0,0,.45), 0 12px 24px rgba(0,0,0,.4);
+}
+.tile-big:active { transform: translateY(2px); }
+.tile-big .tb-txt { display: grid; gap: 2px; flex: 1; min-width: 0; }
+.tile-big b { font-family: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif; font-weight: 400; font-size: 27px; letter-spacing: 1px; text-transform: uppercase; line-height: 1.05; }
+.tile-big small { font-size: 12.5px; font-weight: 700; opacity: .85; }
+.tile-big i { font-style: normal; font-size: 40px; line-height: 1; font-weight: 800; }
+.tile-big.play { background: linear-gradient(160deg, #ffd45a 0%, #f2a51f 100%); color: #3a2200; border: 2px solid #ffe69a; }
+.tile-big.play b { color: #fff; -webkit-text-stroke: 1.4px #3a2200; paint-order: stroke fill; text-shadow: 0 3px 0 #3a2200; }
+.tile-big.join { background: linear-gradient(160deg, #8a52e8 0%, #4b2aa8 100%); color: #fff; border: 2px solid #b794ff; cursor: default; }
+.tile-big.join:active { transform: none; }
+.tile-big.join input.code { width: 104px; flex: none; padding: 10px 6px; font-size: 20px; letter-spacing: 4px; background: rgba(8,6,30,.55); border-color: #b794ff; }
+.tile-big .btn.go { width: auto; min-height: 46px; padding: 0 16px; background: linear-gradient(180deg, #ffd45a, #f2a51f); color: #3a2200; border-color: #ffe69a; }
+.sec-h { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+body.night .panel { background: linear-gradient(160deg, rgba(40,48,110,.55), rgba(10,12,34,.7)); border-color: #343b7a; }
+body.night .avatar-pick[aria-pressed=true] { border-color: #6fd0ff; background: rgba(90,180,255,.16); }
+.tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.tile {
+  all: unset; box-sizing: border-box; cursor: pointer; position: relative; overflow: hidden;
+  display: grid; gap: 2px; padding: 12px 12px 12px; min-height: 76px; border-radius: 16px;
+  background: linear-gradient(160deg, rgba(40,48,110,.55), rgba(10,12,34,.75)); border: 1px solid #343b7a;
+}
+.tile b { font-size: 14px; } .tile span { font-size: 12px; color: #aab0e0; }
+.tile em { position: absolute; right: 10px; bottom: 6px; font-style: normal; font-size: 30px; opacity: .85; }
+.tile.soon { opacity: .55; cursor: default; }
+.cards-grid.coll { grid-template-columns: repeat(4, 1fr); gap: 6px; }
+
+/* Tisch-Feinschliff: dunkler Raum, Lichtkegel, Vignette. Optional: eigene Bilder in assets/ui/ (room.jpg, table.webp) */
+body.room {
+  background:
+    url(../assets/ui/room.jpg) center top / cover no-repeat,
+    radial-gradient(circle at 2% 30%, rgba(255,160,60,.45), transparent 12%),
+    radial-gradient(circle at 98% 18%, rgba(255,160,60,.34), transparent 11%),
+    radial-gradient(ellipse 70% 30% at 50% 16%, rgba(255,200,120,.20), transparent 70%),
+    repeating-linear-gradient(90deg, rgba(0,0,0,.28) 0 3px, transparent 3px 60px),
+    linear-gradient(180deg, #24150a 0%, #130a05 50%, #0a0603 100%);
+  background-attachment: fixed;
+}
+.board .table-surface {
+  background:
+    url(../assets/ui/table.webp) center / cover no-repeat,
+    radial-gradient(ellipse 60% 40% at 50% 30%, rgba(255,215,150,.22), transparent 70%),
+    repeating-linear-gradient(97deg, transparent 0 5cqw, rgba(0,0,0,.20) 5cqw 5.35cqw, transparent 5.35cqw 8cqw, rgba(255,220,160,.06) 8cqw 8.3cqw),
+    radial-gradient(ellipse at 50% 35%, #a06a3a 0%, #744a25 45%, #3a210f 100%);
+}
+.board::after { content: ""; position: absolute; inset: 0; z-index: 8; pointer-events: none;
+  background: radial-gradient(ellipse 85% 70% at 50% 45%, transparent 55%, rgba(0,0,0,.55) 100%); }
+.board .deck-n { right: -3cqw; bottom: -9cqw; display: grid; justify-items: center; line-height: 1.15; padding: .8cqw 2.4cqw; border-radius: 2cqw; font-size: clamp(14px, 5cqw, 20px); border-color: #3a2a1a; background: rgba(8,5,3,.82); }
+.board .deck-n small { font-size: clamp(8px, 2.4cqw, 10px); font-weight: 600; color: #cdb99a; }
+.ps.multi .ps-card::before { transform: translate(1.2cqw, 1.2cqw); } .ps.multi .ps-card::after { transform: translate(2.4cqw, 2.4cqw); }
+
+#app > * { flex-shrink: 0; }
+#app.game-app > .board { flex-shrink: 1; }
+.tile-big b { font-family: "Arial Black", Impact, system-ui, sans-serif; font-weight: 900; font-size: 22px; letter-spacing: .5px; }
+.tile-big.join b { font-size: 20px; }
+.tile-big.join small { font-size: 11.5px; }
+.board .deck { width: 13cqw; top: 82cqw; }
+.board .deck-n { position: relative; right: auto; bottom: auto; margin-top: 1.5cqw; }
+
+.board .deck-n small { font-size: 0; } .board .deck-n small::before { content: 'Stapel'; font-size: clamp(8px, 2.6cqw, 10px); }

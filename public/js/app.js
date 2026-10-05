@@ -179,6 +179,7 @@
   function render() {
     if (!S.data) return;
     document.body.classList.toggle('room', !!(S.st && S.st.phase !== 'lobby'));
+    document.body.classList.toggle('night', !(S.st && S.st.phase !== 'lobby'));
     if (!(S.st && S.st.phase !== 'lobby')) $app.className = '';
     if (!S.st && S.session) renderResume();
     else if (!S.st) renderHome();
@@ -200,22 +201,34 @@
   function renderHome() {
     const prefill = (new URLSearchParams(location.search).get('code') || '').toUpperCase().slice(0, 4);
     if (!S.data.avatars.some((a) => a.id === S.profile.avatar)) S.profile.avatar = S.data.avatars[0].id;
+    const av = avatarDef(S.profile.avatar);
     $app.innerHTML = `
       <h1 class="logo-h">${LOGO()}</h1>
-      <p class="tagline">Alle sehen, wer du bist. Nur du nicht.</p>
-      <div class="hero" id="hero">${figHTML(S.profile.avatar, 'hero-fig')}</div>
-      <section class="panel stack">
-        <label class="field"><span>Dein Name</span>
-          <input id="in-name" type="text" maxlength="16" autocomplete="nickname" placeholder="z. B. Mia" value="${esc(S.profile.name)}"></label>
-        <div><div class="field"><span>Dein Avatar</span></div>${avatarPicker(S.profile.avatar)}</div>
-        <button class="btn primary" data-act="create">Lobby erstellen</button>
-        <div class="row">
-          <input id="in-code" class="code" type="text" maxlength="4" placeholder="CODE" autocapitalize="characters" autocomplete="off" aria-label="Lobby-Code" value="${esc(prefill)}">
-          <button class="btn" data-act="join">Beitreten</button>
+      <div class="home-top">
+        <div class="hero" id="hero">${figHTML(S.profile.avatar, 'hero-fig')}</div>
+        <div class="profile">
+          <label class="field"><span>Dein Name</span>
+            <input id="in-name" type="text" maxlength="16" autocomplete="nickname" placeholder="z. B. Mia" value="${esc(S.profile.name)}"></label>
+          <p class="tagline" style="margin:0">Alle sehen, wer du bist.<br>Nur du nicht.</p>
         </div>
-        ${S.open ? '' : '<p class="hint center" id="conn-hint">Verbindung wird aufgebaut …</p>'}
+      </div>
+      <button class="tile-big play" data-act="create"><span class="tb-txt"><b>Lobby erstellen</b><small>Spiel mit Freunden · 2–4 Spieler</small></span><i>›</i></button>
+      <div class="tile-big join">
+        <span class="tb-txt"><b>Beitreten</b><small>Code von deinen Freunden</small></span>
+        <input id="in-code" class="code" type="text" maxlength="4" placeholder="CODE" autocapitalize="characters" autocomplete="off" aria-label="Lobby-Code" value="${esc(prefill)}">
+        <button class="btn go" data-act="join" aria-label="Beitreten">Los</button>
+      </div>
+      <section class="panel stack">
+        <div class="sec-h"><b>Dein Avatar</b><span class="muted">${esc(av.name)}</span></div>
+        ${avatarPicker(S.profile.avatar)}
       </section>
-      <button class="link-btn" data-act="rules">Spielregeln</button>`;
+      <div class="tiles">
+        <button class="tile" data-act="collection"><b>Deine Karten</b><span>${setDef().name} · 49</span><em>🃏</em></button>
+        <button class="tile" data-act="rules"><b>Spielregeln</b><span>Kurz erklärt</span><em>📜</em></button>
+        <div class="tile soon"><b>Kopfbedeckung</b><span>Bald verfügbar</span><em>🎩</em></div>
+        <div class="tile soon"><b>Shop</b><span>Bald verfügbar</span><em>🛒</em></div>
+      </div>
+      ${S.open ? '' : '<p class="hint center" id="conn-hint">Verbindung wird aufgebaut …</p>'}`;
   }
 
   function renderLobby() {
@@ -332,7 +345,7 @@
         <div class="stamp ${ok ? 'yes' : 'no'}">${esc(p ? p.name + ': ' : '')}${label}</div></div>`;
     }
     return `<div class="center">${card}</div>
-      <div class="deck" title="Nachziehstapel"><div class="deck-card">${backHTML()}</div><span class="deck-n">${st.deckCount}</span></div>`;
+      <div class="deck" title="Nachziehstapel"><div class="deck-card">${backHTML()}</div><span class="deck-n"><small>Nachziehstapel</small>${st.deckCount}</span></div>`;
   }
 
   /** Verlauf: eine Zeile pro Ereignis */
@@ -544,6 +557,7 @@
       const m = ui.modal;
       if (m.type === 'rules') html = `${RULES}<button class="btn" data-act="close">Verstanden</button>`;
       else if (m.type === 'zoom') html = zoomHTML(m.id);
+      else if (m.type === 'collection') html = collectionHTML();
       else if (m.type === 'pile') html = pileHTML(m.pid);
       else if (m.type === 'guess') html = guessHTML();
       else if (m.type === 'leave') {
@@ -556,6 +570,14 @@
     $modal.innerHTML = `<div class="modal" data-closable="${closable}" role="dialog" aria-modal="true"><div class="sheet">${html}</div></div>`;
     const sheet = $modal.querySelector('.sheet');
     if (sheet) sheet.scrollTop = keepScroll;
+  }
+
+  function collectionHTML() {
+    const ids = Array.from({ length: N * N }, (_, i) => i);
+    return `<h2>Deine Karten · ${esc(setDef().name)}</h2>
+      <p class="muted" style="margin:2px 0 8px">Alle 49 Karten des Sets. Tippen zum Vergrößern.</p>
+      <div class="cards-grid coll">${ids.map((id) => `<button class="card-btn" data-act="zoom" data-id="${id}">${cardHTML(id)}</button>`).join('')}</div>
+      <button class="btn" data-act="close">Schließen</button>`;
   }
 
   function zoomHTML(id) {
@@ -664,6 +686,7 @@
       if (code.length !== 4) { toast('Gib den 4-stelligen Code ein.', true); return; }
       send({ type: 'join', code, name: S.profile.name, avatar: S.profile.avatar });
     },
+    collection() { S.ui.modal = { type: 'collection' }; renderModals(); },
     cancelresume() { S.session = null; LS.del('unknown.session'); render(); },
     rules() { S.ui.modal = { type: 'rules' }; renderModals(); },
     close() { S.ui.modal = null; renderModals(); },
@@ -748,5 +771,6 @@
     connect();
   }
   if (location.search.includes('debug')) window.__unknown = { cardHTML, S };
+  if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('/sw.js').catch(() => {});
   init();
 })();

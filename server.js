@@ -159,8 +159,12 @@ function joinOk(room, playerId, ws) {
 }
 
 function addToRoom(room, ws, msg) {
-  const avatar = AVATARS.includes(msg.avatar) ? msg.avatar : null;
+  let avatar = AVATARS.includes(msg.avatar) ? msg.avatar : null;
   if (!avatar) return send(ws, { type: 'error', message: 'Bitte wähle einen Avatar.' });
+  // Schon vergeben? Dann bekommt der neue Spieler automatisch einen freien Avatar.
+  if (room.game.players.some((p) => p.avatar === avatar)) {
+    avatar = AVATARS.find((id) => !room.game.players.some((p) => p.avatar === id)) || avatar;
+  }
   const playerId = randomId(4);
   const r = G.addPlayer(room.game, { id: playerId, name: cleanName(msg.name), avatar });
   if (r.error) return send(ws, { type: 'error', message: r.error });
