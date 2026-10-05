@@ -1,0 +1,14 @@
+[
+  { "id": "teufel",  "name": "Teufelchen", "emoji": "😈", "color": "#d6382f" },
+  { "id": "alien",   "name": "Alien",      "emoji": "👽", "color": "#5fc43a" },
+  { "id": "geist",   "name": "Geist",      "emoji": "👻", "color": "#7fb8ff" },
+  { "id": "pinguin", "name": "Pinguin",    "emoji": "🐧", "color": "#2f6fd0" },
+  { "id": "weiss",   "name": "Weißling",   "emoji": "⚪", "color": "#e9e4da" },
+  { "id": "schatten","name": "Schatten",   "emoji": "🥷", "color": "#2b2b30" },
+  { "id": "hase",    "name": "Hase",       "emoji": "🐰", "color": "#f06fb0" },
+  { "id": "schleim", "name": "Schleim",    "emoji": "🟡", "color": "#f2c22b" },
+  { "id": "feuer",   "name": "Feuer",      "emoji": "🔥", "color": "#f5811f" },
+  { "id": "krake",   "name": "Krake",      "emoji": "🐙", "color": "#8a43d6" },
+  { "id": "hai",     "name": "Hai",        "emoji": "🦈", "color": "#2eaee8" },
+  { "id": "golem",   "name": "Golem",      "emoji": "🪨", "color": "#8a7a66" }
+]
