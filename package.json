@@ -1,12 +1,14 @@
 {
   "name": "unknown-game",
-  "version": "0.7.1",
-  "private": true,
-  "type": "module",
+  "version": "2.0.0",
+  "description": "UNKNOWN – Online-Deduktionsspiel für 2–4 Spieler",
+  "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "test": "node --test test/"
   },
-  "dependencies": {
-    "ws": "^8.18.0"
-  }
+  "engines": { "node": ">=20" },
+  "dependencies": { "ws": "^8.18.0" },
+  "license": "UNLICENSED",
+  "private": true
 }
