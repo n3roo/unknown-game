@@ -407,21 +407,23 @@ button:disabled{
 
     <h3>Deine Stapel</h3>
 
-    <div class="piles">
 
-      <div class="pile">
-        <strong>RELATED</strong>
-        <div id="relatedCount">0 Karten</div>
-      </div>
+<div class="piles">
 
-      <div class="pile">
-        <strong>NOT RELATED</strong>
-        <div id="notRelatedCount">0 Karten</div>
-      </div>
-
-    </div>
-
+  <div class="pile" onclick="togglePile('related')">
+    <strong>RELATED</strong>
+    <div id="relatedCount">0 Karten</div>
+    <div class="pile-hint">Tippen zum Öffnen</div>
   </div>
+
+  <div class="pile" onclick="togglePile('notRelated')">
+    <strong>NOT RELATED</strong>
+    <div id="notRelatedCount">0 Karten</div>
+    <div class="pile-hint">Tippen zum Öffnen</div>
+  </div>
+
+</div>
+
 
 
   <div class="small">
