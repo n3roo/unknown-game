@@ -949,3 +949,5 @@ body.drop-ready .table-surface { box-shadow: 0 0 0 1.2cqw rgba(110,230,140,.8), 
 .fig .hat { transform: translate(-50%, -80%); }
 .fig .hat.crown { transform: translate(-50%, -76%); }
 .fig .hat img { transform: scale(var(--hs, 1.25)); }
+
+.fig .hat, .fig .hat.crown { transform: translate(-50%, calc(var(--hk, 85%) * -1)); }

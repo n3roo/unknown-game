@@ -99,5 +99,8 @@
   /* Skalierung je Hut (Mützen mit schmaler Basis größer, damit sie den Kopf umschließen) */
   window.HAT_FIT = { basecap: 1.25, muetze: 1.4, partyhut: 1.35, koch: 1.4, cowboy: 1.15, fez: 1.35, zylinder: 1.3, propeller: 1.3, pirat: 1.2, wikinger: 1.3, zauberer: 1.4,
     krone: 1.35, liga_silber: 1.35, liga_gold: 1.35, liga_platin: 1.35, liga_diamant: 1.35, liga_meister: 1.35 };
+  /* Aufsetz-Tiefe je Hut in % der Hutbox (größer = sitzt höher): flache Böden (Koch, Zylinder, Fez) höher, Mützen tiefer */
+  window.HAT_SINK = { koch: 92, zylinder: 90, fez: 90, partyhut: 86, zauberer: 86, muetze: 83, basecap: 85, propeller: 85, cowboy: 84, pirat: 84, wikinger: 86,
+    krone: 82, liga_silber: 82, liga_gold: 82, liga_platin: 82, liga_diamant: 82, liga_meister: 82 };
   window.HATS = HATS;
 })();
