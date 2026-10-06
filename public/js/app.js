@@ -1106,8 +1106,8 @@
       <p class="hint" style="margin:0 0 6px">Melde dich an, damit Gold, Hüte und Rang nie verloren gehen und auf jedem Gerät da sind.</p>
       ${a.google ? '<div id="g-btn" style="min-height:44px;margin:4px 0"></div>' : ''}
       ${a.email ? (S.authEmail
-        ? `<p class="hint" style="margin:6px 0 4px">Code an <b>${esc(S.authEmail)}</b> gesendet.</p><input id="in-code" type="text" inputmode="numeric" maxlength="6" placeholder="6-stelliger Code" autocomplete="one-time-code" style="width:100%"><div class="row"><button class="btn small" data-act="authverify">Bestätigen</button><button class="btn small ghost" data-act="authback">Andere E-Mail</button></div>`
-        : `<input id="in-mail" type="email" placeholder="E-Mail-Adresse" autocomplete="email" style="width:100%"><button class="btn ghost" data-act="authemail">Code per E-Mail senden</button>`) : ''}
+        ? `<p class="hint" style="margin:6px 0 4px">Code an <b>${esc(S.authEmail)}</b> gesendet.</p><input id="in-authcode" type="text" inputmode="numeric" maxlength="6" placeholder="6-stelliger Code" value="${esc(S.authDraftCode || '')}" autocomplete="one-time-code" style="width:100%"><div class="row"><button class="btn small" data-act="authverify">Bestätigen</button><button class="btn small ghost" data-act="authback">Andere E-Mail</button></div>`
+        : `<input id="in-mail" type="email" value="${esc(S.authDraftMail || '')}" placeholder="E-Mail-Adresse" autocomplete="email" style="width:100%"><button class="btn ghost" data-act="authemail">Code per E-Mail senden</button>`) : ''}
       <p class="hint" style="margin:6px 0 0">Beim Anmelden mit einem bestehenden Konto ersetzt dessen Spielstand den aktuellen dieses Geräts.</p></div>`;
   }
 
@@ -1309,7 +1309,7 @@
     hideend() { S.ui.hideEnd = true; renderModals(); },
     watchad() { send({ type: 'adstart' }); },
     authemail() { const v = ((document.getElementById('in-mail') || {}).value || '').trim(); if (!v) return toast('Bitte E-Mail eingeben.', true); document.activeElement && document.activeElement.blur(); send({ type: 'authemail', email: v }); },
-    authverify() { const v = ((document.getElementById('in-code') || {}).value || '').trim(); if (!v) return toast('Bitte den Code eingeben.', true); document.activeElement && document.activeElement.blur(); send({ type: 'authverify', email: S.authEmail, code: v }); },
+    authverify() { const v = ((document.getElementById('in-authcode') || {}).value || '').trim(); if (!v) return toast('Bitte den Code eingeben.', true); document.activeElement && document.activeElement.blur(); send({ type: 'authverify', email: S.authEmail, code: v }); },
     authback() { S.authEmail = null; renderModals(); },
     authlogout() { send({ type: 'authlogout' }); },
     authdeletestart() { S.ui.delAsk = true; renderModals(); },
@@ -1391,6 +1391,8 @@
   document.addEventListener('input', (e) => {
     if (e.target.id === 'in-name') { S.profile.name = e.target.value; saveProfile(); }
     if (e.target.id === 'in-code') e.target.value = e.target.value.toUpperCase();
+    if (e.target.id === 'in-authcode') S.authDraftCode = e.target.value;
+    if (e.target.id === 'in-mail') S.authDraftMail = e.target.value;
   });
 
   document.addEventListener('change', (e) => {
