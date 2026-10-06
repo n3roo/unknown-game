@@ -919,3 +919,5 @@ button { touch-action: manipulation; }
 .tut-tag.yes { background: var(--yes, #2f9e57); } .tut-tag.no { background: var(--no, #c0392b); }
 .dots { display: flex; justify-content: center; gap: 6px; margin: 14px 0 4px; }
 .dots i { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,.25); } .dots i.on { background: #e8a94a; width: 20px; border-radius: 6px; }
+
+.legal { text-align: center; font-size: 12px; opacity: .6; margin: 6px 0 14px; } .legal a { color: inherit; }

@@ -32,3 +32,11 @@ Die 49 Karten entstehen automatisch: Ort = (Charakter + Accessoire) mod 7.
 - **Ranked**: Rating ab 1000 (Elo-Variante), Matchmaking 2–4 Spieler, Ligen Bronze → Meister mit einmaligen Belohnungen (Gold + Liga-Hut), Rangliste weltweit und pro Land.
 - **Hüte**: 12 kaufbare + 5 Liga-Hüte (`public/js/hats.js`, `public/data/hats.json`), Ankerpunkte je Avatar in `avatars.json` (`hat`).
 - **Speicher** (Umgebungsvariablen): `TURSO_URL` + `TURSO_TOKEN` (kostenlose Turso-DB, empfohlen für Render Free), oder `DATA_FILE=/pfad/profiles.json` (Datei, braucht persistenten Datenträger). Ohne beides: nur Arbeitsspeicher – Profile gehen beim Neustart verloren.
+
+## Tagesbelohnung, Missionen, Tutorial, Aliens-Set
+
+- **Tagesbelohnung**: 7-Tage-Serie (20/30/40/50/60/80/150 Gold), Tag = Kalendertag in Deutschland. Tägliche Missionen (3 pro Tag) in `lib/missions.js`.
+- **Tutorial**: 3 Seiten beim ersten Spiel (`unknown.tutorial` in localStorage), später über „Spielregeln“.
+- **Aliens-Set**: Vorbereitung und alle 49 ChatGPT-Prompts in `docs/aliens-set.md`.
+- **Rechtliches**: `public/datenschutz.html` und `public/impressum.html` sind Entwürfe mit Platzhaltern in [eckigen Klammern].
+- **Karten einbauen**: `python3 tools/process_cards.py <Nr>=<Datei> ...` aus dem Repo-Hauptordner (trägt die Karte auch in `sets.json` ein).

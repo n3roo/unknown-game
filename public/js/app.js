@@ -336,6 +336,7 @@
         <button class="tile" data-act="collection"><b>Deine Karten</b><span>${setDef().name} · 49</span><em>🃏</em></button>
         <button class="tile" data-act="rules"><b>Spielregeln</b><span>Kurz erklärt</span><em>📜</em></button>
       </div>
+      <p class="legal"><a href="/datenschutz.html">Datenschutz</a> · <a href="/impressum.html">Impressum</a></p>
       ${S.open ? '' : '<p class="hint center" id="conn-hint">Verbindung wird aufgebaut …</p>'}`;
   }
 
