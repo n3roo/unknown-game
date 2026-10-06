@@ -895,3 +895,5 @@ button { touch-action: manipulation; }
 .rewards li { animation: slidein .4s both; } .rewards li:nth-child(2) { animation-delay: .12s; } .rewards li:nth-child(3) { animation-delay: .24s; } .rewards li:nth-child(4) { animation-delay: .36s; } .rewards li:nth-child(5) { animation-delay: .48s; }
 @keyframes slidein { from { opacity: 0; transform: translateX(-16px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .fx-banner, .confetti { display: none; } .last.fresh *, .hand.dealing .slot-card, .modal.enter, .modal.enter .sheet, .actions-row .btn { animation: none !important; } }
+/* Tisch ohne Verzerrung: natürliches Seitenverhältnis (Bild 1400x748) */
+.board .table-surface { left: -19cqw; width: 138cqw; height: 73.7cqw; top: 40cqw; background-size: 100% 100%; }
