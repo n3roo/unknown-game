@@ -505,7 +505,7 @@
         <div class="me-side">${pileStack(p, 'notRelated')}</div>
       </div>`;
     }
-    return `<div class="s3 opp ${turn ? 'turn' : ''} ${p.out ? 'out' : ''}" style="left:${pos[0]}%;top:${pos[1]}cqw">
+    return `<div class="s3 opp ${pos[0] === 50 ? 'mid' : 'side'} ${turn ? 'turn' : ''} ${p.out ? 'out' : ''}" style="left:${pos[0]}%;top:${pos[1]}cqw">
       ${secret}
       <div class="s3-fig">${figHTML(p.avatar, '', p.hat)}</div>
       ${plate}
