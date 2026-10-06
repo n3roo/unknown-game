@@ -999,3 +999,10 @@ body.drop-ready .table-surface { box-shadow: 0 0 0 1.2cqw rgba(110,230,140,.8), 
 .av-name { position: absolute; top: 0; left: 50%; transform: translateX(-50%); font: 800 12px system-ui; color: #f6e7c4; text-shadow: 0 1px 4px #000; background: rgba(12,8,22,.55); padding: 2px 9px; border-radius: 999px; z-index: 3; white-space: nowrap; }
 .today-tab { top: 74px; padding: 6px 6px 5px 8px; }
 .today-tab i { font-size: 20px; }
+
+/* Raten: kleiner Knopf seitlich statt großer Aktionsleiste */
+.guess-fab { position: absolute; z-index: 6; right: 19cqw; top: 90cqw; width: 14cqw; height: 14cqw; min-width: 50px; min-height: 50px; border-radius: 50%; border: 0; display: grid; place-content: center; justify-items: center; gap: 0; cursor: pointer;
+  background: radial-gradient(circle at 35% 30%, #ffe3a0, #e8a94a 70%); color: #3a2208; box-shadow: 0 3px 0 #9a6414, 0 7px 14px rgba(0,0,0,.5); }
+.guess-fab i { font-style: normal; font-size: clamp(18px, 5.4cqw, 24px); line-height: 1; } .guess-fab b { font: 800 clamp(9px, 2.6cqw, 11px) system-ui; }
+.guess-fab:active { transform: translateY(2px) scale(.96); }
+.statusline small { display: block; font-size: 10.5px; font-weight: 600; opacity: .8; margin-top: 1px; }

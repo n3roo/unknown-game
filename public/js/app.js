@@ -613,15 +613,6 @@
       return `<button class="card-btn slot-card ${S.ui.sel === id ? 'sel' : ''} ${(clueMode || myTurn) && !ok ? 'dim' : ''}" style="--i:${i - mid};--z:${i}" data-act="sel" data-id="${id}" aria-pressed="${S.ui.sel === id}">${cardHTML(id)}</button>`;
     });
 
-    let actions = '';
-    if (clueMode) {
-      actions = `<button class="btn primary" data-act="giveclue" ${S.ui.sel === null ? 'disabled' : ''}>Hinweis geben</button>`;
-    } else if (myTurn) {
-      actions = `<button class="btn yes" data-act="play" ${S.ui.sel === null ? 'disabled' : ''}>Ausspielen</button>
-        <button class="btn primary" data-act="openguess">Raten</button>`;
-    }
-    if (actions && S.ui.sel !== null) actions += `<button class="btn ghost zoom-btn" data-act="zoomsel" aria-label="Karte groß ansehen">🔍</button>`;
-
     $app.className = 'game-app';
     $app.innerHTML = `
       <div class="topbar">
@@ -632,14 +623,14 @@
         <button class="icon-btn" data-act="rules" aria-label="Spielregeln">?</button>
         <button class="icon-btn" data-act="leavepage" aria-label="Spiel verlassen">⎋</button>
       </div>
-      <div class="statusline ${status.mine ? 'mine' : ''}">${esc(line)}</div>
+      <div class="statusline ${status.mine ? 'mine' : ''}">${esc(line)}${S.ui.sel !== null && (clueMode || myTurn) ? `<small>Nochmal tippen oder auf den Tisch ziehen: ${clueMode ? 'Hinweis geben' : 'ausspielen'}</small>` : ''}</div>
       <section class="board" aria-label="Spieltisch"><div class="bstage">
         <span class="lantern l"></span><span class="lantern r"></span>
         <div class="table-surface"></div>
         ${others.map((i, k) => seatHTML(st.players[i], i, false, pos[k])).join('')}
         ${centerHTML()}
         ${tickerHTML()}
-        ${actions ? `<div class="actions-row">${actions}</div>` : ''}
+        ${myTurn ? '<button class="guess-fab" data-act="openguess" aria-label="Verdächtigen raten"><i>🎯</i><b>Raten</b></button>' : ''}
         ${seatHTML(me, st.you, true, null)}
         <div class="hand ${S.fx.deal ? 'dealing' : ''}" aria-label="Deine Handkarten">${handCards.join('')}</div>
       </div></section>`;
@@ -720,9 +711,9 @@
     <ul>
       <li>Jeder hat eine <b>geheime Karte</b> über sich. Alle sehen sie, nur du nicht. Finde heraus, welcher <b>Charakter</b> mit welchem <b>Accessoire</b> an welchem <b>Ort</b> du bist.</li>
       <li>Es gibt 49 Karten, jede Kombination nur einmal. Zwei Karten haben höchstens ein gemeinsames Merkmal.</li>
-      <li>Du hast fünf Handkarten. Am Anfang bekommst du von deinem rechten Nachbarn einen ersten Hinweis.</li>
-      <li><b>Ausspielen:</b> Deine Karte kommt offen auf den Tisch. „Passt“ heißt: mindestens ein Merkmal stimmt mit deiner Geheimkarte überein. Sonst „passt nicht“. Alle sehen deine Stapel.</li>
-      <li><b>Raten:</b> Statt eine Karte zu spielen, nennst du Charakter, Accessoire und Ort. Alle drei müssen stimmen, dann gewinnst du sofort.</li>
+      <li>Du hast fünf Handkarten. Gedrückt halten vergrößert eine Karte. Am Anfang bekommst du von deinem rechten Nachbarn einen ersten Hinweis.</li>
+      <li><b>Ausspielen:</b> Ziehe eine Handkarte auf den Tisch (oder tippe sie zweimal an). Sie kommt offen auf den Tisch. „Passt“ heißt: mindestens ein Merkmal stimmt mit deiner Geheimkarte überein. Sonst „passt nicht“. Alle sehen deine Stapel.</li>
+      <li><b>Raten:</b> Mit dem 🎯-Knopf neben dem Stapel nennst du statt einer Karte Charakter, Accessoire und Ort. Alle drei müssen stimmen, dann gewinnst du sofort.</li>
       <li>Ein falscher Tipp dreht einen deiner Stapel um (beim ersten Fehler wählst du, beim zweiten der andere). Beim dritten Fehler bist du raus.</li>
       <li>Tipp: Karten der anderen schließen Möglichkeiten aus. Eine „passt nicht“-Karte streicht gleich drei Merkmale.</li>
     </ul>`;
@@ -1122,6 +1113,10 @@
     sel(t) {
       SFX.select();
       const id = Number(t.dataset.id);
+      if (S.ui.sel === id && dragKind(id)) { // zweites Tippen auf die gewählte Karte: ausspielen bzw. Hinweis geben
+        if (dragKind(id) === 'clue') actions.giveclue(); else actions.play();
+        render(); return;
+      }
       S.ui.sel = S.ui.sel === id ? null : id;
       render();
     },
@@ -1223,10 +1218,13 @@
     const c = e.target.closest && e.target.closest('.slot-card'); if (!c || drag || e.button) return;
     drag = { id: Number(c.dataset.id), x: e.clientX, y: e.clientY, on: false, pid: e.pointerId, ghost: null, w: c.getBoundingClientRect().width, html: c.innerHTML };
     drag.kind = dragKind(drag.id);
+    const pid = drag.id;
+    drag.lp = setTimeout(() => { if (drag && !drag.on && drag.id === pid) { drag.long = true; suppressClick = Date.now() + 600; S.ui.modal = { type: 'zoom', id: pid }; renderModals(); } }, 480);
   });
   document.addEventListener('pointermove', (e) => {
     if (!drag || e.pointerId !== drag.pid) return;
     if (!drag.on) {
+      if (Math.hypot(e.clientX - drag.x, e.clientY - drag.y) > 10) clearTimeout(drag.lp);
       if (!drag.kind || Math.hypot(e.clientX - drag.x, e.clientY - drag.y) < 12) return;
       drag.on = true;
       try { document.documentElement.setPointerCapture(e.pointerId); } catch { /* egal */ }
@@ -1243,7 +1241,7 @@
   }, { passive: false });
   function endDrag(e, cancel) {
     if (!drag || (e && e.pointerId !== drag.pid)) return;
-    const d = drag; drag = null;
+    const d = drag; drag = null; clearTimeout(d.lp);
     document.body.classList.remove('dragging', 'drop-ready');
     if (d.ghost) d.ghost.remove();
     if (!d.on) return;
