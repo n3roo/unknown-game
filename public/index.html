@@ -12,8 +12,37 @@
   <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
   <link rel="icon" type="image/png" href="assets/icons/icon-192.png">
   <link rel="stylesheet" href="css/style.css">
+  <style>
+    #splash{position:fixed;inset:0;z-index:200;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;background:radial-gradient(ellipse at 50% 30%,#2b1c10,#140c07 70%);color:#f3e6cf;font-family:system-ui,sans-serif;transition:opacity .45s ease}
+    #splash.out{opacity:0;pointer-events:none}
+    #splash .sp-logo{width:min(64vw,260px);height:auto;animation:sp-in .6s ease both}
+    #splash .sp-row{display:flex;align-items:flex-end;justify-content:center;gap:4px;height:96px}
+    #splash .sp-row img{height:76px;width:auto;max-width:64px;object-fit:contain;transform-origin:50% 100%;animation:sp-hop 1.15s cubic-bezier(.3,.7,.4,1) infinite;animation-delay:calc(var(--i) * .13s)}
+    #splash .sp-shadow{position:absolute}
+    #splash .sp-txt{min-height:44px;text-align:center;font-size:14px;line-height:1.45;color:#cdb594;max-width:280px}
+    #splash .sp-txt b{display:block;color:#f3e6cf;font-size:15px;margin-bottom:2px}
+    #splash .sp-bar{width:140px;height:4px;border-radius:2px;background:rgba(255,255,255,.12);overflow:hidden}
+    #splash .sp-bar i{display:block;height:100%;width:40%;border-radius:2px;background:#e8a94a;animation:sp-bar 1.4s ease-in-out infinite}
+    #splash button{margin-top:6px;height:42px;padding:0 20px;border-radius:12px;border:1px solid #e8a94a;background:transparent;color:#e8a94a;font:800 14px system-ui,sans-serif}
+    @keyframes sp-hop{0%{transform:translateY(0) scale(1.08,.9)}18%{transform:translateY(0) scale(.94,1.08)}45%{transform:translateY(-22px) scale(.96,1.06)}70%{transform:translateY(0) scale(1.06,.93)}100%{transform:translateY(0) scale(1.08,.9)}}
+    @keyframes sp-bar{0%{margin-left:-40%}100%{margin-left:100%}}
+    @keyframes sp-in{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
+    @media (prefers-reduced-motion:reduce){#splash .sp-row img,#splash .sp-bar i,#splash .sp-logo{animation:none}}
+  </style>
 </head>
 <body>
+  <div id="splash" role="status" aria-live="polite">
+    <img class="sp-logo" src="assets/logo.png" alt="UNKNOWN">
+    <div class="sp-row" aria-hidden="true">
+      <img style="--i:0" src="assets/avatars/teufel_cut.png" alt="">
+      <img style="--i:1" src="assets/avatars/alien_cut.png" alt="">
+      <img style="--i:2" src="assets/avatars/pinguin_cut.png" alt="">
+      <img style="--i:3" src="assets/avatars/hai_cut.png" alt="">
+      <img style="--i:4" src="assets/avatars/feuer_cut.png" alt="">
+    </div>
+    <div class="sp-bar" aria-hidden="true"><i></i></div>
+    <div class="sp-txt" id="sp-txt"><b>Spiel wird geladen …</b></div>
+  </div>
   <main id="app" aria-live="polite"></main>
   <div id="modal-root"></div>
   <div id="toast" role="status" aria-live="assertive"></div>

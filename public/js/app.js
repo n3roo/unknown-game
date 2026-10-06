@@ -277,6 +277,7 @@
         render();
         break;
       case 'profile':
+        hideSplash();
         { const old = S.me; if (old && m.profile.hats.length > old.hats.length) SFX.buy(); }
         if (!S.autoDone) {
           S.autoDone = true;
@@ -1525,6 +1526,25 @@
 
   /* ------------------------------------------------------- Start */
 
+  /* Ladebildschirm: bleibt, bis der Server antwortet (Render-Server können nach Pause ~1 Min. zum Aufwachen brauchen) */
+  const splashEl = document.getElementById('splash');
+  const splashT0 = Date.now();
+  const splashTips = ['Tipp: Wer zuerst die geheime Karte errät, gewinnt.', 'Tipp: Tippe deinen Avatar an, um dich umzuziehen.', 'Tipp: Mit „Passt / Passt nicht“ grenzt du Charakter, Hut und Ort ein.', 'Tipp: Tippe auf einen Stapel, dann bleibt er als Fenster offen.'];
+  let splashTick = 0;
+  const splashTimer = splashEl ? setInterval(() => {
+    const el = document.getElementById('sp-txt'); if (!el) return;
+    const sec = (Date.now() - splashT0) / 1000; splashTick += 1;
+    if (sec > 50) { el.innerHTML = '<b>Das dauert länger als sonst.</b>Prüfe deine Verbindung.<br><button onclick="location.reload()">Neu laden</button>'; clearInterval(splashTimer); }
+    else if (sec > 6) el.innerHTML = `<b>Der Server wacht gerade auf …</b>${splashTick % 6 < 3 ? 'Das kann bis zu einer Minute dauern.' : splashTips[Math.floor(splashTick / 6) % splashTips.length]}`;
+    else el.innerHTML = `<b>Spiel wird geladen …</b>${splashTips[splashTick % splashTips.length]}`;
+  }, 2000) : 0;
+  function hideSplash() {
+    if (!splashEl || splashEl.classList.contains('out')) return;
+    clearInterval(splashTimer);
+    const wait = Math.max(0, 900 - (Date.now() - splashT0));
+    setTimeout(() => { splashEl.classList.add('out'); setTimeout(() => splashEl.remove(), 600); }, wait);
+  }
+
   async function init() {
     try {
       const [avatars, sets, hatsDef] = await Promise.all([
@@ -1535,6 +1555,7 @@
       S.data = { avatars, sets }; S.hatsDef = hatsDef;
     } catch {
       $app.innerHTML = '<p class="center" style="margin-top:40px">Konnte die Spieldaten nicht laden. Bitte Seite neu laden.</p>';
+      hideSplash();
       return;
     }
     render();
