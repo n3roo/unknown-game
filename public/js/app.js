@@ -246,7 +246,7 @@
         break;
       case 'profile':
         { const old = S.me; if (old && m.profile.hats.length > old.hats.length) SFX.buy(); }
-        S.me = m.profile; S.storeKind = m.store; if (m.regions) S.regions = m.regions; if (m.leagues) S.leagues = m.leagues;
+        S.me = m.profile; S.storeKind = m.store; if (m.regions) S.regions = m.regions; if (m.leagues) S.leagues = m.leagues; S.rankedBots = !!m.rankedBots;
         if (!S.profile.name) { S.profile.name = S.me.name; saveProfile(); }
         if (S.me.avatar && !S.st) { S.profile.avatar = S.me.avatar; saveProfile(); }
         if (!S.st || S.ui.modal) { if (!S.st) render(); else renderModals(); }
@@ -872,7 +872,7 @@
       ${searching
         ? `<div class="searching"><span class="spin"></span><div><b>Suche Gegner …</b><br><span class="muted">${S.q.size || 1} in der Warteschlange · <span id="q-timer">${Math.floor((Date.now() - S.q.since) / 1000)} s</span></span></div></div>
            <button class="btn ghost" data-act="rankedleave">Suche abbrechen</button>`
-        : '<button class="btn primary" data-act="rankedjoin">Gegner suchen</button><p class="hint center" style="margin:6px 0 0">2–4 Spieler · Sieg: +120 🪙 · Teilnahme: +30 🪙<br>Findet sich niemand, spielst du nach 15 s gegen Bots.</p>'}
+        : `<button class="btn primary" data-act="rankedjoin">Gegner suchen</button><p class="hint center" style="margin:6px 0 0">2–4 Spieler · Sieg: +120 🪙 · Teilnahme: +30 🪙${S.rankedBots ? '<br>Findet sich niemand, spielst du nach 15 s gegen Bots.' : ''}</p>`}
       <h3 style="margin:14px 0 6px">Liga-Belohnungen</h3>
       <ul class="leagues">${S.leagues.map((l) => `<li class="${me.rating >= l.min ? 'got' : ''}"><i>${l.icon}</i><span>${esc(l.name)} <small>ab ${l.min}</small></span><b>${l.gold ? `+${l.gold} 🪙` : ''}${l.hat ? ` <span class="mini-hat">${(window.HATS || {})[l.hat] || ''}</span>` : ''}</b></li>`).join('')}</ul>
       <button class="btn ghost" data-act="leaderboard">Rangliste ansehen</button>

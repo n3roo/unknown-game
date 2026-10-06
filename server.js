@@ -150,7 +150,7 @@ async function loadProfile(secret) {
 const saveProfile = (p) => store.put(p).catch((err) => console.error('Profil speichern fehlgeschlagen:', err.message));
 
 function sendProfile(ws) {
-  if (ws.profile) send(ws, { type: 'profile', profile: E.selfView(ws.profile), store: store.kind, regions: E.REGIONS, leagues: LEAGUES });
+  if (ws.profile) send(ws, { type: 'profile', profile: E.selfView(ws.profile), store: store.kind, regions: E.REGIONS, leagues: LEAGUES, rankedBots: RANKED_BOTS });
 }
 
 /** Spielerdaten aus dem Profil in eine Partie übernehmen (Hut, Rating, Land). */
@@ -294,7 +294,7 @@ function runMatchmaking() {
   const now = Date.now();
   for (const [id, w] of [...queueSockets]) {
     const e = queue.entries.get(id);
-    if (e && now - e.since >= BOT_AFTER_MS && w.readyState === w.OPEN && !w.ctx && w.profile) {
+    if (RANKED_BOTS && e && now - e.since >= BOT_AFTER_MS && w.readyState === w.OPEN && !w.ctx && w.profile) {
       queue.remove(id);
       createBotRoom(w, 1 + Math.floor(Math.random() * 2));
     }
@@ -304,6 +304,8 @@ function runMatchmaking() {
 
 /* ------------------------------------------------------------- Bots */
 
+// Ranked-Bots sind nur für die Anlaufphase gedacht: auf Render RANKED_BOTS=off setzen, dann nie mehr Bots in Ranked.
+const RANKED_BOTS = !/^(off|0|false|no)$/i.test(process.env.RANKED_BOTS || '');
 const BOT_AFTER_MS = 15000; // so lange sucht Ranked, bevor es gegen Bots geht
 const botThink = () => 1100 + Math.random() * 1900;
 

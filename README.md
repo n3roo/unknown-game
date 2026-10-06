@@ -40,3 +40,6 @@ Die 49 Karten entstehen automatisch: Ort = (Charakter + Accessoire) mod 7.
 - **Aliens-Set**: Vorbereitung und alle 49 ChatGPT-Prompts in `docs/aliens-set.md`.
 - **Rechtliches**: `public/datenschutz.html` und `public/impressum.html` sind Entwürfe mit Platzhaltern in [eckigen Klammern].
 - **Karten einbauen**: `python3 tools/process_cards.py <Nr>=<Datei> ...` aus dem Repo-Hauptordner (trägt die Karte auch in `sets.json` ein).
+
+## Bots in Ranked
+Ranked-Suche fällt nach 15 s auf Bots zurück (nur Anlaufphase). Abschalten: auf Render die Umgebungsvariable `RANKED_BOTS=off` setzen. Die Übungsrunde „Gegen Bots üben“ bleibt immer verfügbar.
