@@ -1042,7 +1042,8 @@ body.drop-ready .table-surface { box-shadow: 0 0 0 1.2cqw rgba(110,230,140,.8), 
 @keyframes av-heavy { 0%,100% { scale: 1 1; translate: 0 0; } 50% { scale: 1.01 1.022; translate: 0 -.7%; } }
 
 .av-alien .fb { animation-name: av-bob, av-sway; animation-duration: 3s, 5s; }
-.av-feuer .fb { animation-name: av-flicker; animation-duration: 3s; }
+.av-feuer .fb { animation-name: av-breathe; animation-duration: 4s; }
+.av-feuer .fb > img { animation: av-ember 4s ease-in-out var(--d, 0s) infinite, av-ember2 7s ease-in-out var(--d, 0s) infinite; }
 .av-geist .fb { animation-name: av-float; animation-duration: 6s; }
 .av-golem .fb { animation-name: av-heavy; animation-duration: 5s; }
 .av-hai .fb { animation-name: av-sway, av-breathe; animation-duration: 4s, 4s; }
@@ -1055,9 +1056,12 @@ body.drop-ready .table-surface { box-shadow: 0 0 0 1.2cqw rgba(110,230,140,.8), 
 .av-weiss .fb { animation-name: av-bob; animation-duration: 3s; }
 .fig .fb { animation-delay: var(--d, 0s); animation-timing-function: ease-in-out; }
 
+/* Feuer: ein entspanntes Feuerchen brodelt im Inneren (Glut-Glimmen, langsam, leicht unregelmäßig) */
+@keyframes av-ember { 0%,100% { filter: drop-shadow(0 6px 6px rgba(0,0,0,.55)) drop-shadow(0 0 3px rgba(255,150,40,.25)) brightness(1) saturate(1); } 50% { filter: drop-shadow(0 6px 6px rgba(0,0,0,.55)) drop-shadow(0 0 9px rgba(255,170,50,.55)) brightness(1.07) saturate(1.12); } }
+@keyframes av-ember2 { 0%,100% { transform: scale(1); } 40% { transform: scale(1.006, 1.012); } 70% { transform: scale(.996, 1.004); } }
 /* Im Spiel: deutlich ruhiger (nur leises Atmen), Spieler am Zug wippt leicht */
 @keyframes av-calm { 0%,100% { scale: 1 1; translate: 0 0; } 50% { scale: 1.005 1.014; translate: 0 -.8%; } }
 @keyframes av-turn { 0%,100% { scale: 1 1; translate: 0 0; } 50% { scale: 1.008 1.02; translate: 0 -2%; } }
 .board .fig .fb { animation-name: av-calm !important; animation-duration: 5s !important; }
 .board .s3.turn .fig .fb { animation-name: av-turn !important; animation-duration: 2.5s !important; }
-@media (prefers-reduced-motion: reduce) { .fig .fb { animation: none !important; } }
+@media (prefers-reduced-motion: reduce) { .fig .fb, .av-feuer .fb > img { animation: none !important; } }
