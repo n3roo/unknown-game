@@ -801,8 +801,8 @@ body.room {
 .chips { display: flex; justify-content: flex-end; gap: 8px; padding: 2px 2px 0; }
 .chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; border: 1px solid #5a4630; background: rgba(12,8,22,.7); color: #f6e7c4; font: 800 14px system-ui, sans-serif; cursor: pointer; }
 .chip i { font-style: normal; font-size: 16px; }
-.tile-big.ranked { background: linear-gradient(135deg, #2b49c9, #6a2bd0); border-color: #8fa4ff; color: #fff; }
-.tile-big.ranked small { color: #dfe6ff; }
+.tile-big.ranked { background: linear-gradient(135deg, #8d0f2a, #d3213a 60%, #f0453a); border-color: #ffcf5a; border-width: 2px; color: #fff; box-shadow: 0 6px 20px rgba(220,30,60,.4), inset 0 1px 0 rgba(255,255,255,.3), 0 0 0 1px rgba(255,207,90,.35); text-shadow: 0 1px 2px rgba(60,0,10,.5); }
+.tile-big.ranked small { color: #fff3d6; }
 .fl { font-style: normal; margin-right: .25em; }
 .rewards { list-style: none; margin: 4px 0 8px; padding: 0; display: grid; gap: 4px; text-align: left; }
 .rewards li { display: grid; grid-template-columns: 26px 1fr auto; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 10px; background: rgba(255,255,255,.07); font-size: 14px; }
