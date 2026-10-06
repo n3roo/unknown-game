@@ -853,3 +853,8 @@ body.room {
 .bstage { position: absolute; left: 0; top: 0; width: 100%; height: 100%; transform-origin: 0 0; }
 /* Tisch flacher = schräger Blick von oben */
 .board .table-surface { height: 132cqw; top: 33cqw; }
+/* Neuer, schräger Tisch (table2.webp) */
+.board .table-surface {
+  left: -22cqw; width: 144cqw; top: 30cqw; height: 112cqw;
+  background: url(../assets/ui/table2.webp) center / 100% 100% no-repeat;
+}
