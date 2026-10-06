@@ -33,8 +33,8 @@ test('Rating: ohne Sieger keine Änderung', () => {
 
 test('Ligen', () => {
   assert.equal(R.leagueOf(0).id, 'bronze');
-  assert.equal(R.leagueOf(1099).id, 'bronze');
-  assert.equal(R.leagueOf(1100).id, 'silber');
+  assert.equal(R.leagueOf(99).id, 'bronze');
+  assert.equal(R.leagueOf(100).id, 'silber');
   assert.equal(R.leagueOf(2500).id, 'meister');
 });
 
@@ -66,7 +66,7 @@ test('Allein gespielt: kein Gold', () => {
 });
 
 test('Ranked: Rating und Gold, Liga-Aufstieg bringt Belohnung und Hut einmalig', () => {
-  const a = mk('a', 1095); const b = mk('b', 1095);
+  const a = mk('a', 95); const b = mk('b', 95);
   a.rankedPlayed = 20; b.rankedPlayed = 20;
   const r = E.settleGame({ entries: [{ id: 'x', profile: a }, { id: 'y', profile: b }], winnerId: 'x', ranked: true });
   assert.equal(r.x.leagueUp, 'silber');
@@ -74,7 +74,7 @@ test('Ranked: Rating und Gold, Liga-Aufstieg bringt Belohnung und Hut einmalig',
   assert.ok(r.x.ratingDelta > 0 && r.y.ratingDelta < 0);
   assert.equal(r.x.gold, E.GOLD.rankedWin + E.GOLD.firstWinOfDay + 150);
   // nochmal runter und wieder rauf: keine zweite Belohnung
-  a.rating = 1090;
+  a.rating = 90;
   const gold = a.gold;
   const info = E.applyRating(a, 20);
   assert.equal(info.bonusGold, 0);
@@ -84,8 +84,9 @@ test('Ranked: Rating und Gold, Liga-Aufstieg bringt Belohnung und Hut einmalig',
 test('Hüte kaufen und anziehen', () => {
   const p = mk('a');
   assert.match(E.buyHat(p, 'zauberer').error, /fehlen/);
+  p.gold = 1000;
   assert.ok(E.buyHat(p, 'basecap').ok);
-  assert.equal(p.gold, E.START_GOLD - 100);
+  assert.equal(p.gold, 500);
   assert.match(E.buyHat(p, 'basecap').error, /schon/);
   assert.match(E.buyHat(p, 'liga_gold').error, /Belohnung/);
   assert.match(E.buyHat(p, 'gibtsnicht').error, /nicht/);
@@ -98,12 +99,12 @@ test('Hüte kaufen und anziehen', () => {
 
 test('Einstellungen werden bereinigt', () => {
   const p = mk('a');
-  E.updateSettings(p, { name: '  <b>Mia</b>  ', avatar: 'nix', region: 'XX' }, ['weiss', 'hase']);
+  E.updateSettings(p, { name: '  <b>Mia</b>  ', avatar: 'nix', region: 'XX' }, ['weiss', 'teufel']);
   assert.equal(p.name, 'bMia/b');
   assert.equal(p.avatar, 'weiss');
   assert.equal(p.region, 'DE');
-  E.updateSettings(p, { avatar: 'hase', region: 'AT' }, ['weiss', 'hase']);
-  assert.equal(p.avatar, 'hase');
+  E.updateSettings(p, { avatar: 'teufel', region: 'AT' }, ['weiss', 'teufel']);
+  assert.equal(p.avatar, 'teufel');
   assert.equal(p.region, 'AT');
 });
 
@@ -128,4 +129,24 @@ test('Warteschlange: 4 ähnliche Spieler sofort, 2 erst nach Wartezeit, Rating-F
   q.add('x', 800, 0); q.add('y', 1400, 0);
   assert.deepEqual(q.match(13000), []); // 600 Unterschied: Fenster noch zu klein
   assert.equal(q.match(30000).length, 1); // 150 + 30*25 = 900
+});
+
+test('Premium-Avatare: kaufen, Besitz, Auswahl', () => {
+  const E = require('../lib/economy');
+  const p = E.newProfile('x');
+  assert.equal(E.ownsAvatar(p, 'weiss'), true);
+  assert.equal(E.ownsAvatar(p, 'kaktus'), false);
+  E.updateSettings(p, { avatar: 'kaktus' }, ['weiss', 'kaktus']);
+  assert.equal(p.avatar, 'weiss', 'ungekaufter Avatar wird nicht gesetzt');
+  assert.ok(E.buyAvatar(p, 'kaktus').error, 'zu wenig Gold');
+  p.gold = 5000;
+  assert.deepEqual(E.buyAvatar(p, 'kaktus'), { ok: true });
+  assert.equal(p.gold, 1000);
+  assert.ok(E.buyAvatar(p, 'kaktus').error, 'doppelt kaufen geht nicht');
+  assert.ok(E.buyAvatar(p, 'weiss').error, 'kostenlose Avatare sind nicht kaufbar');
+  E.updateSettings(p, { avatar: 'kaktus' }, ['weiss', 'kaktus']);
+  assert.equal(p.avatar, 'kaktus');
+  p.avatar = 'hase';
+  E.fixAvatar(p);
+  assert.equal(p.avatar, 'weiss', 'entfernte Figur fällt auf Standard zurück');
 });

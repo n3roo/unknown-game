@@ -17,7 +17,7 @@ test('Freunde: Anfrage per Code, annehmen, in Lobby einladen und beitreten', asy
   await new Promise((r) => S.server.listen(0, r));
   const port = S.server.address().port;
   const a = await client(port); const b = await client(port);
-  a.send({ type: 'hello', secret: '11'.repeat(16), init: { name: 'Anna', avatar: 'hase', region: 'DE' } });
+  a.send({ type: 'hello', secret: '11'.repeat(16), init: { name: 'Anna', avatar: 'teufel', region: 'DE' } });
   b.send({ type: 'hello', secret: '22'.repeat(16), init: { name: 'Ben', avatar: 'teufel', region: 'DE' } });
   await wait(500);
   const codeB = b.last('friends').code;
@@ -44,7 +44,7 @@ test('Freunde: Anfrage per Code, annehmen, in Lobby einladen und beitreten', asy
   a.send({ type: 'invite', id: friendId });
   await wait(200);
   assert.match(a.last('error').message, /Lobby/);
-  a.send({ type: 'create', name: 'Anna', avatar: 'hase' });
+  a.send({ type: 'create', name: 'Anna', avatar: 'teufel' });
   await wait(300);
   a.send({ type: 'invite', id: friendId });
   await wait(400);

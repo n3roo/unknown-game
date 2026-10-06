@@ -21,7 +21,9 @@ const { createStore } = require('./lib/store');
 
 const PORT = Number(process.env.PORT) || 10000;
 const PUBLIC_DIR = path.join(__dirname, 'public');
-const AVATARS = require('./public/data/avatars.json').map((a) => a.id);
+const AVATAR_LIST = require('./public/data/avatars.json');
+const AVATARS = AVATAR_LIST.map((a) => a.id);
+const FREE_AVATARS = AVATAR_LIST.filter((a) => !a.price).map((a) => a.id);
 const SETS = require('./public/data/sets.json').sets.map((s) => s.id);
 
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -193,6 +195,7 @@ async function loadProfile(secret) {
     profiles.set(id, p);
   }
   E.rollDaily(p);
+  E.fixAvatar(p);
   return p;
 }
 
@@ -329,7 +332,7 @@ function addToRoom(room, ws, msg) {
   let avatar = profile.avatar;
   // Schon vergeben? Dann bekommt der neue Spieler automatisch einen freien Avatar.
   if (room.game.players.some((p) => p.avatar === avatar)) {
-    avatar = AVATARS.find((id) => !room.game.players.some((p) => p.avatar === id)) || avatar;
+    avatar = FREE_AVATARS.find((id) => !room.game.players.some((p) => p.avatar === id)) || avatar;
   }
   const playerId = randomId(4);
   const r = G.addPlayer(room.game, { id: playerId, name: profile.name, avatar, hat: profile.hat, rating: room.ranked ? profile.rating : null, region: profile.region });
@@ -363,7 +366,7 @@ function runMatchmaking() {
       // Jeder Avatar nur einmal: bei Doppelungen bekommt der Spätere einen freien
       const taken = room.game.players.map((p) => p.avatar);
       const keep = w.profile.avatar;
-      const avatar = taken.includes(keep) ? AVATARS.find((a) => !taken.includes(a)) : keep;
+      const avatar = taken.includes(keep) ? FREE_AVATARS.find((a) => !taken.includes(a)) : keep;
       const playerId = randomId(4);
       G.addPlayer(room.game, { id: playerId, name: w.profile.name, avatar, hat: w.profile.hat, rating: w.profile.rating, region: w.profile.region });
       room.game.players[room.game.players.length - 1].profileId = w.profile.id;
@@ -517,6 +520,7 @@ const handlers = {
     if (!other) return;
     const r = FR.accept(ws.profile, other);
     if (r.error) return send(ws, { type: 'error', message: r.error });
+    E.M.bump(ws.profile, 'friends'); E.M.bump(other, 'friends');
     saveProfile(ws.profile); saveProfile(other);
     send(ws, { type: 'toast', message: `Du bist jetzt mit ${other.name} befreundet 🎉` });
     sendFriends(ws);
@@ -590,6 +594,14 @@ const handlers = {
     }
   },
 
+  buyavatar(ws, msg) {
+    if (!ws.profile) return;
+    const r = E.buyAvatar(ws.profile, String(msg.avatar ?? ''));
+    if (r.error) return send(ws, { type: 'error', message: r.error });
+    saveProfile(ws.profile);
+    sendProfile(ws);
+  },
+
   buy(ws, msg) {
     if (!ws.profile) return;
     const r = E.buyHat(ws.profile, String(msg.hat ?? ''));
@@ -605,11 +617,14 @@ const handlers = {
     const ok = want.length >= 6 && got.length === want.length && require('crypto').timingSafeEqual(Buffer.from(got), Buffer.from(want));
     if (!ok) return send(ws, { type: 'error', message: 'Code falsch.' });
     const p = ws.profile;
-    if (!p.hats.includes('dev')) p.hats.push('dev');
+    // Entwickler: alle Hüte (inkl. Liga-/Entwicklerkrone) und alle Avatare freischalten
+    for (const h of require('./public/data/hats.json')) if (!p.hats.includes(h.id)) p.hats.push(h.id);
+    if (!p.avatars) p.avatars = [];
+    for (const a of AVATAR_LIST) if (a.price && !p.avatars.includes(a.id)) p.avatars.push(a.id);
     p.hat = 'dev';
     saveProfile(p);
     sendProfile(ws);
-    send(ws, { type: 'toast', message: 'Entwickler-Krone freigeschaltet 👑' });
+    send(ws, { type: 'toast', message: 'Entwickler-Modus: alle Accessoires und Avatare freigeschaltet 👑' });
   },
 
   claimdaily(ws) {
@@ -738,6 +753,7 @@ const handlers = {
 
   avatar(ws, msg, room, playerId) {
     if (!AVATARS.includes(msg.avatar)) return send(ws, { type: 'error', message: 'Unbekannter Avatar.' });
+    if (ws.profile && !E.ownsAvatar(ws.profile, msg.avatar)) return send(ws, { type: 'error', message: 'Diesen Avatar musst du erst im Shop kaufen.' });
     const r = G.setAvatar(room.game, playerId, msg.avatar);
     if (!r.error && ws.profile) {
       ws.profile.avatar = msg.avatar;

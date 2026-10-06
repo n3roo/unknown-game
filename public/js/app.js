@@ -119,7 +119,7 @@
     return `<span class="hat ${/krone|liga_|^dev$/.test(hat) ? 'crown' : ''}" style="left:${h.x}%;top:${h.y}%;width:${h.w}%;--hs:${(window.HAT_FIT || {})[hat] || 1.25};--hk:${(window.HAT_SINK || {})[hat] || 85}%">${window.HATS[hat]}</span>`;
   }
   /* Lose Teile (Steine, Blasen, Tropfen) schweben frei; Partikel je Figur */
-  const FX = { feuer: ['spark', 6], teufel: ['spark', 4], schatten: ['smoke', 3], hai: ['bubble', 4], krake: ['bubble', 4], pinguin: ['snow', 6], hase: ['heart', 3], weiss: ['star', 4], alien: ['star', 4] };
+  const FX = { feuer: ['spark', 6], teufel: ['spark', 4], schatten: ['smoke', 3], hai: ['bubble', 4], krake: ['bubble', 4], pinguin: ['snow', 6], toast: ['crumb', 4], wolke: ['rain', 3] };
   const SYM = { heart: '♥', star: '✦' };
   function bitsHTML(a) {
     const big = a.id === 'golem';
@@ -129,14 +129,14 @@
       const ay = (big ? 3.4 + (i % 2) * 2 : 2.2 + (i % 2)).toFixed(1);
       const ar = ((i % 2 ? -1 : 1) * (big ? 10 + i * 3 : 5)).toFixed(0);
       const dur = [5, 6, 4, 6, 5][i % 5];
-      return `<img class="bit" src="${esc(b.src)}" alt="" draggable="false" style="left:${b.x}%;top:${b.y}%;width:${b.w}%;height:${b.h}%;--ax:${ax}cqmin;--ay:${ay}cqmin;--ar:${ar}deg;--bt:${dur}s;--bd:-${(now + i * 1.7).toFixed(2)}s">`;
+      return `<img class="bit ${esc(b.kind || '')}" src="${esc(b.src)}" alt="" draggable="false" style="--dir:${i % 2 ? 'reverse' : 'normal'};left:${b.x}%;top:${b.y}%;width:${b.w}%;height:${b.h}%;--ax:${ax}cqmin;--ay:${ay}cqmin;--ar:${ar}deg;--bt:${dur}s;--bd:-${(now + i * 1.7).toFixed(2)}s">`;
     }).join('');
   }
+  const glowHTML = (a) => (a.glow ? `<i class="orb" style="left:${a.glow.x}%;top:${a.glow.y}%;width:${a.glow.s}%"></i>` : '');
   function eyesHTML(a) {
     const box = (e) => `left:${e.x}%;top:${e.y}%;width:${e.w}%;height:${e.h}%`;
     let h = '';
     if (a.eyes) h += `<img class="eyes" src="${esc(a.eyes.src)}" alt="" draggable="false" style="${box(a.eyes)}">`;
-    if (a.wink) h += `<img class="wink" src="${esc(a.wink.src)}" alt="" draggable="false" style="${box(a.wink)}"><i class="wstar" style="left:${(a.wink.x + a.wink.w * 0.9).toFixed(1)}%;top:${(a.wink.y - 4).toFixed(1)}%">✦</i>`;
     return h;
   }
   function fxHTML(a) {
@@ -151,11 +151,12 @@
   }
   function figHTML(id, cls = '', hat = null) {
     const a = avatarDef(id);
-    return `<span class="fig av-${esc(a.id)} ${cls}"><span class="fb" style="--ar:${a.ar || 1};--d:-${((Date.now() / 1000) % 60).toFixed(2)}s"><img src="assets/avatars/${esc(a.id)}_cut.png" alt="${esc(a.name)}" data-e="${a.emoji}" onerror="this.replaceWith(Object.assign(document.createElement('b'),{textContent:this.dataset.e,className:'emo'}))">${bitsHTML(a)}${eyesHTML(a)}${fxHTML(a)}${hatHTML(a, hat)}</span></span>`;
+    return `<span class="fig av-${esc(a.id)} ${cls}"><span class="fb" style="--ar:${a.ar || 1};--d:-${((Date.now() / 1000) % 60).toFixed(2)}s"><img class="body" src="assets/avatars/${esc(a.id)}_cut.png" alt="${esc(a.name)}" data-e="${a.emoji}" onerror="this.replaceWith(Object.assign(document.createElement('b'),{textContent:this.dataset.e,className:'emo'}))">${bitsHTML(a)}${eyesHTML(a)}${glowHTML(a)}${fxHTML(a)}${hatHTML(a, hat)}</span></span>`;
   }
   const LOGO = (cls = '') => `<img class="logo-img ${cls}" src="assets/logo.png" alt="UNKNOWN" draggable="false">`;
+  const usableAvatars = () => S.data.avatars.filter((a) => !a.price || (S.me && (S.me.avatars || []).includes(a.id)));
   function avatarPicker(selected, taken = []) {
-    return `<div class="avatar-grid" role="group" aria-label="Avatar wählen">${S.data.avatars.map((a) => {
+    return `<div class="avatar-grid" role="group" aria-label="Avatar wählen">${usableAvatars().map((a) => {
       const isTaken = taken.includes(a.id) && a.id !== selected;
       return `<button class="avatar-pick" data-act="avatar" data-id="${esc(a.id)}" aria-pressed="${a.id === selected}" ${isTaken ? 'disabled' : ''} aria-label="${esc(a.name)}">${avatarHTML(a.id, 38)}</button>`;
     }).join('')}</div>`;
@@ -965,18 +966,25 @@
     const me = S.me;
     if (!me) return '<p>Profil wird geladen …</p><button class="btn" data-act="close">Schließen</button>';
     const prev = S.ui.prevHat || null;
+    const prevAv = S.ui.prevAv || null;
     const sel = prev ? hatDef(prev) : null;
+    const avSel = prevAv ? S.data.avatars.find((a) => a.id === prevAv) : null;
+    const avOwned = (a) => !a.price || (me.avatars || []).includes(a.id);
     const owned = (id) => me.hats.includes(id);
-    let action = '<p class="hint center">Tippe einen Hut für die Vorschau.</p>';
-    if (sel) {
+    let action = '<p class="hint center">Tippe einen Hut oder Avatar für die Vorschau.</p>';
+    if (avSel) {
+      if (avOwned(avSel)) action = `<p class="hint center">${esc(avSel.name)} gehört dir. Wechsle oben im Menü mit den Pfeilen zu ihm.</p>`;
+      else action = `<button class="btn primary" data-act="buyavatar" data-id="${avSel.id}" ${me.gold < avSel.price ? 'disabled' : ''}>${esc(avSel.name)} kaufen · ${avSel.price} 🪙</button>${me.gold < avSel.price ? `<p class="hint center">Dir fehlen ${avSel.price - me.gold} Gold. Gewinne Runden, löse Missionen und steige in der Rangliste auf.</p>` : ''}`;
+    } else if (sel) {
       if (owned(sel.id)) action = '<p class="hint center">Den Hut besitzt du schon. Zieh ihn oben im Menü an (🎩 Umziehen).</p>';
       else if (sel.league) action = `<p class="hint center">Diesen Hut bekommst du beim Aufstieg in die ${esc(leagueDef(sel.league).name)}-Liga.</p>`;
       else action = `<button class="btn primary" data-act="buy" data-hat="${sel.id}" ${me.gold < sel.price ? 'disabled' : ''}>Kaufen · ${sel.price} 🪙</button>${me.gold < sel.price ? `<p class="hint center">Dir fehlen ${sel.price - me.gold} Gold. Gewinne Runden, um Gold zu verdienen.</p>` : ''}`;
     }
     const item = (h) => hatItem(h, me, { sel: prev === h.id, own: owned(h.id), act: 'prevhat', label: owned(h.id) ? '✓ Im Besitz' : h.league ? '🔒 Liga' : `${h.price} 🪙` });
     return `<div class="wd-top"><h2 style="margin:0">Shop</h2><span class="gold-pill">🪙 ${me.gold}</span></div>
-      <div class="wd-stage">${figHTML(me.avatar, 'wd-fig', prev)}</div>
+      <div class="wd-stage">${figHTML(avSel ? avSel.id : me.avatar, 'wd-fig', prev || me.hat)}</div>
       ${action}
+      <h3 style="margin:12px 0 6px">Avatare <small class="muted">· Premium</small></h3><div class="hat-grid av-shop">${S.data.avatars.filter((a) => a.price).map((a) => `<button class="hat-item ${prevAv === a.id ? 'sel' : ''} ${avOwned(a) ? 'own' : ''}" data-act="prevav" data-id="${a.id}" aria-label="${esc(a.name)}"><span class="hi-av">${avatarHTML(a.id, 58)}</span><b>${esc(a.name)}</b><small>${avOwned(a) ? '✓ Im Besitz' : `${a.price} 🪙`}</small></button>`).join('')}</div>
       <h3 style="margin:12px 0 6px">Hüte</h3><div class="hat-grid">${S.hatsDef.filter((h) => !h.league && !h.special).map(item).join('')}</div>
       <h3 style="margin:12px 0 6px">Liga-Hüte</h3><div class="hat-grid">${S.hatsDef.filter((h) => h.league).map(item).join('')}</div>
       <button class="btn" data-act="close">Schließen</button>`;
@@ -1097,7 +1105,7 @@
   const actions = {
     today() { S.ui.modal = { type: 'today' }; renderModals(); },
     avatarstep(t) {
-      const list = S.data.avatars; const i = list.findIndex((a) => a.id === S.profile.avatar);
+      const list = usableAvatars(); const i = Math.max(0, list.findIndex((a) => a.id === S.profile.avatar));
       actions.avatar({ dataset: { id: list[(i + Number(t.dataset.dir) + list.length) % list.length].id } });
       SFX.select();
     },
@@ -1211,8 +1219,10 @@
     leaderboard() { S.ui.modal = { type: 'leaderboard' }; S.lb = null; send({ type: 'leaderboard', scope: S.ui.lbScope }); renderModals(); },
     lbscope(t) { S.ui.lbScope = t.dataset.scope; S.lb = null; send({ type: 'leaderboard', scope: S.ui.lbScope }); renderModals(); },
     wardrobe() { S.ui.modal = { type: 'wardrobe' }; renderModals(); },
-    shop() { S.ui.modal = { type: 'shop' }; S.ui.prevHat = null; renderModals(); },
-    prevhat(t) { S.ui.prevHat = t.dataset.hat; renderModals(); },
+    shop() { S.ui.modal = { type: 'shop' }; S.ui.prevHat = null; S.ui.prevAv = null; renderModals(); },
+    prevhat(t) { S.ui.prevHat = t.dataset.hat; S.ui.prevAv = null; renderModals(); },
+    prevav(t) { S.ui.prevAv = t.dataset.id; S.ui.prevHat = null; renderModals(); },
+    buyavatar(t) { send({ type: 'buyavatar', avatar: t.dataset.id }); },
     buy(t) { send({ type: 'buy', hat: t.dataset.hat }); },
     equip(t) { send({ type: 'equip', hat: t.dataset.hat || null }); },
     claimdaily() { send({ type: 'claimdaily' }); },

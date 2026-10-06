@@ -35,7 +35,7 @@ async function runClues(code, clients) {
 }
 
 test('Gelegenheitspartie mit 2 Spielern bis zum Sieg, Gold wird verteilt', async () => {
-  const a = await client('a1', { name: 'Anna', avatar: 'hase', region: 'DE' });
+  const a = await client('a1', { name: 'Anna', avatar: 'teufel', region: 'DE' });
   const b = await client('b2', { name: 'Ben', avatar: 'alien', region: 'AT' });
   const goldA = a.profile.gold; const goldB = b.profile.gold;
   const code = await lobby([a, b]);
@@ -134,6 +134,7 @@ test('Ranked: zwei Spieler werden gepaart, Aufgeben kostet Punkte', { timeout: 3
   const st = await a.next('state', 5000, (m) => m.ranked);
   assert.strictEqual(st.state.phase, 'clues');
   assert.strictEqual(st.ranked, true);
+  profiles.get(a.profile.id).rating = 100; a.profile.rating = 100;
   const before = a.profile.rating;
   a.send({ type: 'leave' });
   const prof = await a.next('profile', 4000, (m) => m.profile.rating < before);

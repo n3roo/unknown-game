@@ -10,7 +10,7 @@ test('Botspiel: startet, Bots handeln', async () => {
   const msgs = [];
   ws.on('message', (d) => msgs.push(JSON.parse(d)));
   await new Promise((r) => ws.on('open', r));
-  ws.send(JSON.stringify({ type: 'hello', secret: 'cd'.repeat(16), init: { name: 'Bottester', avatar: 'hase', region: 'DE' } }));
+  ws.send(JSON.stringify({ type: 'hello', secret: 'cd'.repeat(16), init: { name: 'Bottester', avatar: 'teufel', region: 'DE' } }));
   await new Promise((r) => setTimeout(r, 300));
   ws.send(JSON.stringify({ type: 'botgame', bots: 2 }));
   await new Promise((r) => setTimeout(r, 4000));

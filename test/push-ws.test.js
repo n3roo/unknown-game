@@ -19,7 +19,7 @@ test('Push: Abo speichern, Offline-Freund wird per Benachrichtigung eingeladen',
   await new Promise((r) => S.server.listen(0, r));
   const port = S.server.address().port;
   const a = await client(port); const b = await client(port);
-  a.send({ type: 'hello', secret: '33'.repeat(16), init: { name: 'Ana', avatar: 'hase', region: 'DE' } });
+  a.send({ type: 'hello', secret: '33'.repeat(16), init: { name: 'Ana', avatar: 'teufel', region: 'DE' } });
   b.send({ type: 'hello', secret: '44'.repeat(16), init: { name: 'Bob', avatar: 'teufel', region: 'DE' } });
   await wait(500);
   b.send({ type: 'pushkey' }); await wait(200);
@@ -32,7 +32,7 @@ test('Push: Abo speichern, Offline-Freund wird per Benachrichtigung eingeladen',
   b.send({ type: 'friendaccept', id: b.last('friends').incoming[0].id }); await wait(300);
   const bobId = a.last('friends').friends[0].id;
   b.ws.close(); await wait(300);
-  a.send({ type: 'create', name: 'Ana', avatar: 'hase' }); await wait(300);
+  a.send({ type: 'create', name: 'Ana', avatar: 'teufel' }); await wait(300);
   a.send({ type: 'invite', id: bobId }); await wait(500);
   assert.match(a.last('toast').message, /Benachrichtigung gesendet/);
   assert.strictEqual(S.profiles.get([...S.profiles.keys()].find((k) => S.profiles.get(k).name === 'Bob')).push.length, 1);

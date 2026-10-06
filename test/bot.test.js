@@ -9,7 +9,7 @@ function seeded(seed) { let s = seed >>> 0; return () => ((s = (Math.imul(s, 166
 function simulate(n, seed) {
   const rnd = seeded(seed);
   const g = G.createGame('p0');
-  for (let i = 0; i < n; i++) G.addPlayer(g, { id: 'p' + i, name: 'Bot' + i, avatar: ['teufel', 'alien', 'geist', 'hase'][i] });
+  for (let i = 0; i < n; i++) G.addPlayer(g, { id: 'p' + i, name: 'Bot' + i, avatar: ['teufel', 'alien', 'geist', 'pinguin'][i] });
   G.startGame(g, 'p0', (max) => Math.floor(rnd() * max));
   let steps = 0;
   while (g.phase !== 'finished' && steps++ < 600) {

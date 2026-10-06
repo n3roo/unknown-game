@@ -2,7 +2,7 @@
 const { test } = require('node:test');
 const assert = require('node:assert');
 const WebSocket = require('ws');
-const { server } = require('../server');
+const { server, profiles } = require('../server');
 
 function client(port) {
   const ws = new WebSocket(`ws://localhost:${port}`);
@@ -21,10 +21,11 @@ test('hello, Hut kaufen/anziehen, Rangliste', async () => {
   await new Promise((r) => server.listen(0, r));
   const port = server.address().port;
   const c = await client(port);
-  c.send({ type: 'hello', secret: 'ab'.repeat(16), init: { name: 'Tester', avatar: 'hase', region: 'DE' } });
+  c.send({ type: 'hello', secret: 'ab'.repeat(16), init: { name: 'Tester', avatar: 'teufel', region: 'DE' } });
   const p = (await c.next('profile')).profile;
   assert.strictEqual(p.name, 'Tester');
-  assert.strictEqual(p.avatar, 'hase');
+  assert.strictEqual(p.avatar, 'teufel');
+  profiles.get(p.id).gold = 1000;
   c.send({ type: 'buy', hat: 'basecap' });
   assert.ok((await c.next('profile')).profile.hats.includes('basecap'));
   c.send({ type: 'equip', hat: 'basecap' });

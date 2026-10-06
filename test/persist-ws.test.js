@@ -17,7 +17,7 @@ test('Partie übersteht Neustart (Räume im Store) und Rejoin klappt', async () 
   const port = S.server.address().port;
   const secret = 'ef'.repeat(16);
   const c = await client(port);
-  c.send({ type: 'hello', secret, init: { name: 'Persist', avatar: 'hase', region: 'DE' } });
+  c.send({ type: 'hello', secret, init: { name: 'Persist', avatar: 'teufel', region: 'DE' } });
   await wait(300);
   c.send({ type: 'botgame', bots: 2 });
   await wait(1500);

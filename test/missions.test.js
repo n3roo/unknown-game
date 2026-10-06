@@ -40,7 +40,7 @@ test('Serie läuft nach Tag 7 wieder bei Tag 1 los', () => {
 test('Missionen: Fortschritt, Abholen, nicht doppelt, Tageswechsel', () => {
   const p = fresh();
   const ids = M.missionIdsFor(dayKey(D(2)));
-  assert.strictEqual(ids.length, 3);
+  assert.strictEqual(ids.length, 5);
   const v0 = M.view(p, D(2));
   assert.ok(v0.missions.every((m) => m.progress === 0 && !m.claimed));
   const mPlay = v0.missions.find((m) => /^play/.test(m.id));
@@ -71,5 +71,5 @@ test('Spielende zählt für Missionen (settleGame)', () => {
 
 test('selfView enthält Tagesbelohnung und Missionen', () => {
   const v = E.selfView(fresh());
-  assert.ok(v.daily && Array.isArray(v.missions) && v.missions.length === 3);
+  assert.ok(v.daily && Array.isArray(v.missions) && v.missions.length === 5);
 });

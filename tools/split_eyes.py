@@ -10,14 +10,15 @@ f=f'public/assets/avatars/{i}_cut.png'
 im=np.array(Image.open(f).convert('RGBA')); H,W=im.shape[:2]
 box=np.zeros((H,W),bool); box[y0:y1,x0:x1]=True
 light='--light' in sys.argv
-dark=((im[...,:3].sum(2)>520) if light else (im[...,:3].sum(2)<300))&box&(im[...,3]>100)
+black='--black' in sys.argv
+dark=((im[...,:3].sum(2)>520) if light else (im[...,:3].sum(2)<(170 if black else 300)))&box&(im[...,3]>100)
 l,k=ndi.label(dark); sz=ndi.sum(dark,l,range(1,k+1))
 order=np.argsort(sz)[::-1][:(4 if '--light' in sys.argv else 2)]+1
 comps=[l==o for o in order if sz[o-1]>40]
 if wink: comps=[max(comps,key=lambda c:np.where(c)[1].mean())]
 piece=np.zeros((H,W),bool)
 for c in comps: piece|=c
-piece=ndi.binary_dilation(piece,iterations=6 if light else 5)&(im[...,3]>0)
+piece=ndi.binary_dilation(piece,iterations=6 if light else (8 if black else 5))&(im[...,3]>0)
 ys,xs=np.where(piece); a1,a2,b1,b2=ys.min(),ys.max()+1,xs.min(),xs.max()+1
 # Auge als eigene Ebene: Alpha aus Dunkelheit
 if light:
