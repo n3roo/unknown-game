@@ -351,13 +351,13 @@
         </div>
       </div>
       <button class="tile-big ranked" data-act="ranked"><span class="tb-txt"><b>Ranked</b><small>${lg ? `${lg.icon} ${lg.name} · ${me.rating} Punkte` : 'Steige in der Rangliste auf'}</small></span><i>›</i></button>
-      <button class="tile-big play" data-act="botgame"><span class="tb-txt"><b>Gegen Bots üben</b><small>Sofort spielen · ohne Rangpunkte</small></span><i>›</i></button>
       <button class="tile-big play" data-act="create"><span class="tb-txt"><b>Lobby erstellen</b><small>Spiel mit Freunden · 2–4 Spieler</small></span><i>›</i></button>
       <div class="tile-big join">
         <span class="tb-txt"><b>Beitreten</b><small>Code von deinen Freunden</small></span>
         <input id="in-code" class="code" type="text" maxlength="4" placeholder="CODE" autocapitalize="characters" autocomplete="off" aria-label="Lobby-Code" value="${esc(prefill)}">
         <button class="btn go" data-act="join" aria-label="Beitreten">Los</button>
       </div>
+      <button class="tile-big play" data-act="botgame"><span class="tb-txt"><b>Gegen Bots üben</b><small>Sofort spielen · ohne Rangpunkte</small></span><i>›</i></button>
       <div class="tiles">
         <button class="tile" data-act="shop"><b>Shop</b><span>Hüte kaufen</span><em>🛒</em></button>
         <button class="tile" data-act="leaderboard"><b>Rangliste</b><span>Weltweit &amp; Land</span><em>🏆</em></button>

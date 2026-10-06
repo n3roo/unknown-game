@@ -1006,3 +1006,10 @@ body.drop-ready .table-surface { box-shadow: 0 0 0 1.2cqw rgba(110,230,140,.8), 
 .guess-fab i { font-style: normal; font-size: clamp(18px, 5.4cqw, 24px); line-height: 1; } .guess-fab b { font: 800 clamp(9px, 2.6cqw, 11px) system-ui; }
 .guess-fab:active { transform: translateY(2px) scale(.96); }
 .statusline small { display: block; font-size: 10.5px; font-weight: 600; opacity: .8; margin-top: 1px; }
+
+/* Handfächer: alle fünf Karten komplett im Bild, weniger gequetscht */
+.hand .slot-card { width: 19.5cqw; margin: 0 -0.7cqw;
+  transform: translateY(calc(var(--i) * var(--i) * .9cqw)) rotate(calc(var(--i) * 3.2deg)); }
+.hand .slot-card.sel { transform: translateY(-12cqw) rotate(0deg) scale(1.12); }
+.hand { bottom: 3cqw; }
+.hand .slot-card { width: 19cqw; margin: 0 -0.4cqw; transform: translateY(calc(var(--i) * var(--i) * .8cqw)) rotate(calc(var(--i) * 2.8deg)); }
