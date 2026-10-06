@@ -910,3 +910,12 @@ button { touch-action: manipulation; }
 .missions li.done { opacity: .55; }
 .ms-t { display: grid; gap: 3px; } .ms-t small { color: #aab0e0; }
 .ms-ok { color: #6be28a; font-weight: 900; font-size: 20px; padding: 0 8px; }
+
+/* Tutorial */
+.tut p { margin: 8px 0; line-height: 1.4; }
+.tut-row { display: flex; justify-content: center; gap: 10px; margin: 10px 0; }
+.tut-card { position: relative; width: 28%; max-width: 110px; }
+.tut-tag { position: absolute; left: 50%; bottom: -10px; transform: translateX(-50%); padding: 2px 8px; border-radius: 8px; font: 800 12px system-ui, sans-serif; white-space: nowrap; }
+.tut-tag.yes { background: var(--yes, #2f9e57); } .tut-tag.no { background: var(--no, #c0392b); }
+.dots { display: flex; justify-content: center; gap: 6px; margin: 14px 0 4px; }
+.dots i { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,.25); } .dots i.on { background: #e8a94a; width: 20px; border-radius: 6px; }

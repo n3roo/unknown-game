@@ -238,6 +238,7 @@
         break;
       case 'state':
         { const prev = S.st; S.st = m.state; fxFor(prev, m.state, m); }
+        if (m.state.phase === 'clues' && !LS.get('unknown.tutorial') && !S.ui.modal) S.ui.modal = { type: 'tutorial', page: 0 };
         S.code = m.code; S.setId = m.setId; S.ranked = !!m.ranked; S.rewards = m.rewards || null;
         if (m.state.phase !== 'finished') S.ui.hideEnd = false;
         render();
@@ -695,6 +696,28 @@
       <li>Tipp: Karten der anderen schließen Möglichkeiten aus. Eine „passt nicht“-Karte streicht gleich drei Merkmale.</li>
     </ul>`;
 
+  /** Kurz-Tutorial: drei Seiten, einmalig beim ersten Spiel, danach über die Regeln abrufbar. */
+  function tutorialHTML(page) {
+    const mini = (id, tag) => `<div class="tut-card">${cardHTML(id)}${tag ? `<span class="tut-tag ${tag === 'yes' ? 'yes' : 'no'}">${tag === 'yes' ? 'passt' : 'passt nicht'}</span>` : ''}</div>`;
+    const secret = 10; // Charakter 2, Accessoire 4, Ort 5
+    const pages = [
+      { h: 'Wer bist du?', body: `<p>Jeder Spieler hat eine <b>Geheimkarte</b> über dem Kopf. <b>Alle</b> sehen sie, nur <b>du nicht</b>.</p>
+          <div class="tut-row">${mini(secret)}</div><p class="muted">Jede Karte zeigt <b>Charakter</b>, <b>Accessoire</b> und <b>Ort</b>. Finde heraus, welche Kombination du bist.</p>` },
+      { h: 'Passt oder passt nicht', body: `<p>Du bekommst Hinweise und spielst Karten aus. Eine Karte <b>passt</b>, wenn sie in mindestens <b>einem Merkmal</b> mit deiner Geheimkarte übereinstimmt.</p>
+          <div class="tut-row">${mini(secret)}${mini(11, match(secret, 11) ? 'yes' : 'no')}${mini(36, match(secret, 36) ? 'yes' : 'no')}</div>
+          <p class="muted">Links: deine Geheimkarte. Mitte: gleicher Charakter → passt. Rechts: nichts gleich → passt nicht.</p>` },
+      { h: 'Raten und gewinnen', body: `<p>Bist du sicher, tippst du auf <b>Raten</b> und nennst Charakter, Accessoire und Ort. Stimmen alle drei, <b>gewinnst du sofort</b>.</p>
+          <p>Ein falscher Tipp kostet dich einen Hinweisstapel. Nach dem dritten Fehler bist du raus. Also lieber erst Karten ausschließen!</p>
+          <p class="muted">Tipp: Eine „passt nicht“-Karte streicht gleich drei Merkmale.</p>` },
+    ];
+    const last = page >= pages.length - 1;
+    const pg = pages[Math.min(page, pages.length - 1)];
+    return `<div class="tut"><h2>${esc(pg.h)}</h2>${pg.body}
+      <div class="dots">${pages.map((_, i) => `<i class="${i === page ? 'on' : ''}"></i>`).join('')}</div>
+      <div class="actions">${page > 0 ? '<button class="btn ghost" data-act="tutprev">Zurück</button>' : '<button class="btn ghost" data-act="tutdone">Überspringen</button>'}
+        <button class="btn primary" data-act="${last ? 'tutdone' : 'tutnext'}">${last ? 'Los geht’s!' : 'Weiter'}</button></div></div>`;
+  }
+
   function renderModals() {
     const st = S.st;
     const ui = S.ui;
@@ -707,7 +730,8 @@
       html = flipHTML(); closable = false;
     } else if (ui.modal) {
       const m = ui.modal;
-      if (m.type === 'rules') html = `${RULES}<button class="btn" data-act="close">Verstanden</button>`;
+      if (m.type === 'rules') html = `${RULES}<button class="btn ghost" data-act="tutorial">Kurz-Tutorial ansehen</button><button class="btn" data-act="close">Verstanden</button>`;
+      else if (m.type === 'tutorial') { html = tutorialHTML(m.page); closable = false; }
       else if (m.type === 'zoom') html = zoomHTML(m.id);
       else if (m.type === 'collection') html = collectionHTML();
       else if (m.type === 'pile') html = pileHTML(m.pid);
@@ -1014,6 +1038,10 @@
     equip(t) { send({ type: 'equip', hat: t.dataset.hat || null }); },
     claimdaily() { send({ type: 'claimdaily' }); },
     claimmission(t) { send({ type: 'claimmission', id: t.dataset.id }); },
+    tutorial() { S.ui.modal = { type: 'tutorial', page: 0 }; renderModals(); },
+    tutnext() { S.ui.modal.page += 1; renderModals(); },
+    tutprev() { S.ui.modal.page = Math.max(0, S.ui.modal.page - 1); renderModals(); },
+    tutdone() { LS.set('unknown.tutorial', 1); S.ui.modal = null; renderModals(); },
     togglesound() { SFX.on = !SFX.on; renderModals(); },
     togglevib() { SFX.vib = !SFX.vib; renderModals(); },
     account() { S.ui.modal = { type: 'account' }; renderModals(); },
