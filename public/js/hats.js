@@ -96,5 +96,8 @@
   /* Gemalte Hüte (ChatGPT-Raster, via tools/process_hats.py) ersetzen die SVG-Platzhalter. */
   const img = (id) => `<img src="assets/hats/${id}.webp" alt="" draggable="false" decoding="async">`;
   for (const id of Object.keys(HATS)) HATS[id] = img(id);
+  /* Skalierung je Hut (Mützen mit schmaler Basis größer, damit sie den Kopf umschließen) */
+  window.HAT_FIT = { basecap: 1.25, muetze: 1.4, partyhut: 1.35, koch: 1.4, cowboy: 1.15, fez: 1.35, zylinder: 1.3, propeller: 1.3, pirat: 1.2, wikinger: 1.3, zauberer: 1.4,
+    krone: 1.35, liga_silber: 1.35, liga_gold: 1.35, liga_platin: 1.35, liga_diamant: 1.35, liga_meister: 1.35 };
   window.HATS = HATS;
 })();
