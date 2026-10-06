@@ -233,6 +233,7 @@
       case 'joined':
         S.q = null; if (S.ui.modal && ['ranked', 'wardrobe', 'shop', 'leaderboard', 'account'].includes(S.ui.modal.type)) S.ui.modal = null;
         S.session = { code: m.code, token: m.token, playerId: m.playerId };
+        if (m.vsBot) toast('Übungsrunde gegen Bots (ohne Rangpunkte)');
         LS.set('unknown.session', S.session);
         if (new URLSearchParams(location.search).has('code')) history.replaceState(null, '', location.pathname);
         break;
@@ -321,6 +322,7 @@
       </div>
       <button class="tile-big ranked" data-act="ranked"><span class="tb-txt"><b>Ranked</b><small>${lg ? `${lg.icon} ${lg.name} · ${me.rating} Punkte` : 'Steige in der Rangliste auf'}</small></span><i>›</i></button>
       ${todayHTML()}
+      <button class="tile-big play" data-act="botgame"><span class="tb-txt"><b>Gegen Bots üben</b><small>Sofort spielen · ohne Rangpunkte</small></span><i>›</i></button>
       <button class="tile-big play" data-act="create"><span class="tb-txt"><b>Lobby erstellen</b><small>Spiel mit Freunden · 2–4 Spieler</small></span><i>›</i></button>
       <div class="tile-big join">
         <span class="tb-txt"><b>Beitreten</b><small>Code von deinen Freunden</small></span>
@@ -435,6 +437,7 @@
     const pips = [0, 1, 2].map((k) => `<span class="pip ${k < p.wrong ? 'on' : ''}"></span>`).join('');
     let tag = '';
     if (p.out) tag = 'raus';
+    else if (p.bot) tag = '🤖';
     else if (!p.connected) tag = 'getrennt';
     else if (st.phase === 'clues' && !p.clueGiven) tag = 'überlegt';
     const plate = `<div class="s3-plate"><span class="nm">${S.ranked && p.region ? `<i class="fl">${flag(p.region)}</i>` : ''}${esc(isMe ? 'Du' : p.name)}</span><span class="pips" title="Falsche Tipps">${pips}</span>${tag ? `<em>${tag}</em>` : ''}</div>`;
@@ -869,7 +872,7 @@
       ${searching
         ? `<div class="searching"><span class="spin"></span><div><b>Suche Gegner …</b><br><span class="muted">${S.q.size || 1} in der Warteschlange · <span id="q-timer">${Math.floor((Date.now() - S.q.since) / 1000)} s</span></span></div></div>
            <button class="btn ghost" data-act="rankedleave">Suche abbrechen</button>`
-        : '<button class="btn primary" data-act="rankedjoin">Gegner suchen</button><p class="hint center" style="margin:6px 0 0">2–4 Spieler · Sieg: +120 🪙 · Teilnahme: +30 🪙</p>'}
+        : '<button class="btn primary" data-act="rankedjoin">Gegner suchen</button><p class="hint center" style="margin:6px 0 0">2–4 Spieler · Sieg: +120 🪙 · Teilnahme: +30 🪙<br>Findet sich niemand, spielst du nach 15 s gegen Bots.</p>'}
       <h3 style="margin:14px 0 6px">Liga-Belohnungen</h3>
       <ul class="leagues">${S.leagues.map((l) => `<li class="${me.rating >= l.min ? 'got' : ''}"><i>${l.icon}</i><span>${esc(l.name)} <small>ab ${l.min}</small></span><b>${l.gold ? `+${l.gold} 🪙` : ''}${l.hat ? ` <span class="mini-hat">${(window.HATS || {})[l.hat] || ''}</span>` : ''}</b></li>`).join('')}</ul>
       <button class="btn ghost" data-act="leaderboard">Rangliste ansehen</button>
@@ -1029,6 +1032,7 @@
     noop() {},
     ranked() { S.ui.modal = { type: 'ranked' }; renderModals(); },
     rankedjoin() { send({ type: 'rankedjoin' }); },
+    botgame() { send({ type: 'botgame', bots: 2 }); },
     rankedleave() { send({ type: 'rankedleave' }); },
     rankedagain() { leaveNow(); S.ui.modal = { type: 'ranked' }; send({ type: 'rankedjoin' }); renderModals(); },
     leaderboard() { S.ui.modal = { type: 'leaderboard' }; S.lb = null; send({ type: 'leaderboard', scope: S.ui.lbScope }); renderModals(); },

@@ -13,6 +13,7 @@ const { WebSocketServer } = require('ws');
 const G = require('./lib/game');
 const E = require('./lib/economy');
 const { leagueOf, LEAGUES } = require('./lib/rating');
+const B = require('./lib/bot');
 const { Queue } = require('./lib/queue');
 const { createStore } = require('./lib/store');
 
@@ -124,6 +125,7 @@ function broadcast(room) {
       code: room.code,
       setId: room.setId,
       ranked: !!room.ranked,
+      vsBot: !!room.vsBot,
       rewards: (room.rewards && room.rewards[playerId]) || null,
       state: G.viewFor(room.game, playerId),
     });
@@ -173,7 +175,7 @@ function settleIfFinished(room) {
     room.rewards = {};
     return;
   }
-  room.rewards = E.settleGame({ entries, winnerId: room.game.winner, ranked: room.ranked });
+  room.rewards = E.settleGame({ entries, winnerId: room.game.winner, ranked: room.ranked, botGame: !!room.vsBot });
   for (const e of entries) {
     saveProfile(e.profile);
     const ws = room.clients.get(e.id);
@@ -221,7 +223,7 @@ function dropPlayer(room, playerId) {
     ws.ctx = null;
     ws.close(4001, 'Entfernt');
   }
-  if (room.game.players.length === 0) rooms.delete(room.code);
+  if (room.game.players.length === 0 || (room.vsBot && !room.game.players.some((x) => !x.bot))) rooms.delete(room.code);
 }
 
 function joinOk(room, playerId, ws) {
@@ -288,8 +290,79 @@ function runMatchmaking() {
     G.startGame(room.game, room.game.hostId);
     broadcast(room);
   }
+  // Findet sich niemand: nach BOT_AFTER_MS gegen Bots spielen
+  const now = Date.now();
+  for (const [id, w] of [...queueSockets]) {
+    const e = queue.entries.get(id);
+    if (e && now - e.since >= BOT_AFTER_MS && w.readyState === w.OPEN && !w.ctx && w.profile) {
+      queue.remove(id);
+      createBotRoom(w, 1 + Math.floor(Math.random() * 2));
+    }
+  }
   for (const [id, w] of queueSockets) send(w, { type: 'queue', status: 'searching', size: queue.size, since: queue.entries.get(id)?.since });
 }
+
+/* ------------------------------------------------------------- Bots */
+
+const BOT_AFTER_MS = 15000; // so lange sucht Ranked, bevor es gegen Bots geht
+const botThink = () => 1100 + Math.random() * 1900;
+
+/** Neue Partie: ein Mensch gegen 1-3 Bots (Übungsrunde, keine Rangpunkte). */
+function createBotRoom(ws, nBots) {
+  const code = newRoomCode();
+  const room = {
+    code, game: G.createGame(null), setId: SETS[0], clients: new Map(), tokens: new Map(),
+    lastActive: Date.now(), ranked: false, vsBot: true, settled: false, rewards: null,
+  };
+  rooms.set(code, room);
+  const p = ws.profile;
+  const freeAvatar = (pref) => (room.game.players.some((q) => q.avatar === pref) ? AVATARS.find((a) => !room.game.players.some((q) => q.avatar === a)) : pref);
+  const humanId = randomId(4);
+  G.addPlayer(room.game, { id: humanId, name: p.name, avatar: freeAvatar(p.avatar), hat: p.hat, rating: null, region: p.region });
+  room.game.players[0].profileId = p.id;
+  room.game.hostId = humanId;
+  const names = B.BOT_NAMES.slice().sort(() => Math.random() - 0.5);
+  const hats = [null, 'cowboy', 'zylinder', 'partyhut', 'basecap', 'koch'];
+  for (let i = 0; i < nBots; i++) {
+    const id = randomId(4);
+    G.addPlayer(room.game, { id, name: names[i], avatar: freeAvatar(AVATARS[Math.floor(Math.random() * AVATARS.length)]), hat: hats[Math.floor(Math.random() * hats.length)], rating: null, region: null });
+    const bp = room.game.players[room.game.players.length - 1];
+    bp.bot = true;
+  }
+  const token = randomId(16);
+  room.tokens.set(token, humanId);
+  attach(room, humanId, ws);
+  if (queue.has(p.id)) queue.remove(p.id);
+  queueSockets.delete(p.id);
+  send(ws, { type: 'queue', status: 'idle' });
+  send(ws, { type: 'joined', code, playerId: humanId, token, vsBot: true });
+  G.startGame(room.game, humanId);
+  broadcast(room);
+  return room;
+}
+
+/** Bots reagieren mit kurzer Denkpause. Läuft alle 0,6 s. */
+function botTick() {
+  const now = Date.now();
+  for (const room of rooms.values()) {
+    if (!room.vsBot || !['clues', 'playing'].includes(room.game.phase)) continue;
+    if (!room.game.players.some((q) => q.connected && !q.bot && !q.out)) continue;
+    for (const bp of room.game.players) {
+      if (!bp.bot) continue;
+      const d = B.decide(room.game, bp.id);
+      if (!d) { bp.botReadyAt = null; continue; }
+      if (!bp.botReadyAt) { bp.botReadyAt = now + botThink(); continue; }
+      if (now < bp.botReadyAt) continue;
+      bp.botReadyAt = null;
+      B.act(room.game, bp.id);
+      room.lastActive = now;
+      broadcast(room);
+      break; // pro Durchlauf nur eine Aktion im Raum
+    }
+  }
+}
+const botTimer = setInterval(botTick, 600);
+botTimer.unref();
 
 /* ------------------------------------------------------- Nachrichten */
 
@@ -386,6 +459,13 @@ const handlers = {
     queueSockets.set(p.id, ws);
     send(ws, { type: 'queue', status: 'searching', size: queue.size });
     runMatchmaking();
+  },
+
+  botgame(ws, msg) {
+    if (!ws.profile) return send(ws, { type: 'error', message: 'Profil wird noch geladen.' });
+    if (ws.ctx) return send(ws, { type: 'error', message: 'Du bist schon in einer Partie.' });
+    const n = Math.max(1, Math.min(3, Number(msg.bots) || 2));
+    createBotRoom(ws, n);
   },
 
   rankedleave(ws) {
@@ -607,7 +687,7 @@ const janitor = setInterval(() => {
     }
   }
   for (const [code, room] of rooms) {
-    const anyone = room.game.players.some((p) => p.connected);
+    const anyone = room.game.players.some((p) => p.connected && !p.bot);
     if (!anyone && now - room.lastActive > ROOM_IDLE_MS) rooms.delete(code);
   }
 }, 10 * 1000);
