@@ -266,6 +266,7 @@
         toast(m.message, true);
         break;
       case 'gone':
+        toast('Die Partie gibt es nicht mehr (der Server wurde aktualisiert). Starte eine neue Lobby.', true);
         S.session = null; LS.del('unknown.session'); S.st = null;
         render();
         break;
