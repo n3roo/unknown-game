@@ -92,6 +92,52 @@ const server = http.createServer((req, res) => {
 /** code -> { code, game, setId, clients: Map(playerId -> ws), tokens: Map(token -> playerId), lastActive } */
 const rooms = new Map();
 
+/* ---- Räume überleben Neustarts: Zustand wird (gebündelt) im Store gesichert ---- */
+const dirtyRooms = new Set();
+let flushTimer = null;
+function serializeRoom(r) {
+  return {
+    code: r.code, setId: r.setId, ranked: !!r.ranked, vsBot: !!r.vsBot, easyBots: !!r.easyBots, settled: !!r.settled,
+    rewards: r.rewards || null, lastActive: r.lastActive, game: r.game, tokens: [...r.tokens.entries()],
+  };
+}
+function persistRoom(room) {
+  dirtyRooms.add(room.code);
+  if (flushTimer) return;
+  flushTimer = setTimeout(() => { flushTimer = null; flushRooms(); }, 800);
+  flushTimer.unref();
+}
+async function flushRooms() {
+  const codes = [...dirtyRooms]; dirtyRooms.clear();
+  await Promise.all(codes.map((code) => {
+    const room = rooms.get(code);
+    return (room ? store.putRoom(code, serializeRoom(room)) : Promise.resolve()).catch((e) => console.error('Raum sichern fehlgeschlagen', e.message));
+  }));
+}
+function removeRoom(code) {
+  rooms.delete(code);
+  dirtyRooms.delete(code);
+  store.delRoom(code).catch((e) => console.error('Raum löschen fehlgeschlagen', e.message));
+}
+async function restoreRooms() {
+  let list = [];
+  try { list = await store.loadRooms(); } catch (e) { console.error('Räume laden fehlgeschlagen', e.message); return 0; }
+  const now = Date.now();
+  let n = 0;
+  for (const d of list) {
+    if (!d || !d.game || rooms.has(d.code) || now - (d.lastActive || 0) > ROOM_IDLE_MS) { if (d && d.code && !rooms.has(d.code)) store.delRoom(d.code).catch(() => {}); continue; }
+    const room = { code: d.code, setId: d.setId, ranked: d.ranked, vsBot: d.vsBot, easyBots: d.easyBots, settled: d.settled, rewards: d.rewards, lastActive: now, game: d.game, clients: new Map(), tokens: new Map(d.tokens) };
+    for (const p of room.game.players) {
+      if (p.bot) continue;
+      p.connected = false; p.disconnectedAt = now; // Gnadenfrist ab Neustart
+      if (p.profileId && !profiles.has(p.profileId)) { try { const pr = await store.get(p.profileId); if (pr) profiles.set(p.profileId, pr); } catch { /* egal */ } }
+    }
+    rooms.set(room.code, room); n += 1;
+  }
+  return n;
+}
+
+
 function randomId(bytes) {
   return crypto.randomBytes(bytes).toString('hex');
 }
@@ -119,6 +165,7 @@ function send(ws, msg) {
 
 function broadcast(room) {
   settleIfFinished(room);
+  persistRoom(room);
   for (const [playerId, ws] of room.clients) {
     send(ws, {
       type: 'state',
@@ -223,7 +270,7 @@ function dropPlayer(room, playerId) {
     ws.ctx = null;
     ws.close(4001, 'Entfernt');
   }
-  if (room.game.players.length === 0 || (room.vsBot && !room.game.players.some((x) => !x.bot))) rooms.delete(room.code);
+  if (room.game.players.length === 0 || (room.vsBot && !room.game.players.some((x) => !x.bot))) removeRoom(room.code);
 }
 
 function joinOk(room, playerId, ws) {
@@ -504,7 +551,7 @@ const handlers = {
     };
     rooms.set(code, room);
     addToRoom(room, ws, msg);
-    if (room.game.players.length === 0) rooms.delete(code);
+    if (room.game.players.length === 0) removeRoom(code);
   },
 
   join(ws, msg) {
@@ -704,7 +751,7 @@ const janitor = setInterval(() => {
   }
   for (const [code, room] of rooms) {
     const anyone = room.game.players.some((p) => p.connected && !p.bot);
-    if (!anyone && now - room.lastActive > ROOM_IDLE_MS) rooms.delete(code);
+    if (!anyone && now - room.lastActive > ROOM_IDLE_MS) removeRoom(code);
   }
 }, 10 * 1000);
 janitor.unref();
@@ -716,7 +763,11 @@ wss.on('close', () => {
 });
 
 if (require.main === module) {
-  server.listen(PORT, () => console.log(`UNKNOWN läuft auf Port ${PORT}`));
+  restoreRooms().then((n) => { if (n) console.log(`${n} laufende Partien wiederhergestellt`); }).finally(() => {
+    server.listen(PORT, () => console.log(`UNKNOWN läuft auf Port ${PORT}`));
+  });
+  // Render beendet den Dienst bei jedem Update mit SIGTERM: vorher noch alles sichern
+  process.on('SIGTERM', () => { flushRooms().finally(() => process.exit(0)); setTimeout(() => process.exit(0), 4000).unref(); });
 }
 
-module.exports = { server, wss, rooms, store, profiles, queue };
+module.exports = { server, wss, rooms, store, profiles, queue, restoreRooms, flushRooms, serializeRoom };

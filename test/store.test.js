@@ -64,3 +64,26 @@ test('TursoStore: spricht das Pipeline-Protokoll korrekt', async () => {
   assert.equal(await s.rankOf(prof('a', 1111, 'DE')), 5);
   assert.equal((await s.top()).length, 1);
 });
+
+test('Räume: Speichern, Laden, Löschen (Memory, File und Turso-Protokoll)', async () => {
+  const f = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'unk-')), 'p.json');
+  for (const s of [new MemoryStore(), new FileStore(f)]) {
+    await s.putRoom('ABCD', { code: 'ABCD', x: 1 });
+    assert.deepEqual((await s.loadRooms()).map((r) => r.code), ['ABCD']);
+    await s.delRoom('ABCD');
+    assert.deepEqual(await s.loadRooms(), []);
+  }
+  await new FileStore(f).putRoom('WXYZ', { code: 'WXYZ' });
+  assert.deepEqual((await new FileStore(f).loadRooms()).map((r) => r.code), ['WXYZ']);
+  const calls = [];
+  const fake = async (url, opts) => {
+    const stmt = JSON.parse(opts.body).requests[0].stmt; calls.push(stmt.sql);
+    const result = stmt.sql.startsWith('SELECT data') ? { cols: [{ name: 'data' }], rows: [[{ type: 'text', value: '{"code":"Q"}' }]] } : { cols: [], rows: [] };
+    return { ok: true, json: async () => ({ results: [{ type: 'ok', response: { type: 'execute', result } }, { type: 'ok' }] }) };
+  };
+  const t = new TursoStore('libsql://x.turso.io', 'T', fake);
+  await t.putRoom('Q', { code: 'Q' });
+  assert.equal((await t.loadRooms())[0].code, 'Q');
+  await t.delRoom('Q');
+  assert.ok(calls.some((c) => c.includes('CREATE TABLE IF NOT EXISTS rooms')) && calls.some((c) => c.startsWith('DELETE FROM rooms')));
+});
