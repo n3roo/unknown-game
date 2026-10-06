@@ -1065,3 +1065,19 @@ body.drop-ready .table-surface { box-shadow: 0 0 0 1.2cqw rgba(110,230,140,.8), 
 .board .fig .fb { animation-name: av-calm !important; animation-duration: 5s !important; }
 .board .s3.turn .fig .fb { animation-name: av-turn !important; animation-duration: 2.5s !important; }
 @media (prefers-reduced-motion: reduce) { .fig .fb, .av-feuer .fb > img { animation: none !important; } }
+
+/* Feuer: sichtbares Brodeln im Inneren – leuchtende Glutblasen steigen in der Silhouette auf */
+.av-feuer .fb::after {
+  content: ""; position: absolute; inset: 0; z-index: 1; pointer-events: none;
+  -webkit-mask: url(../assets/avatars/feuer_cut.png) center / 100% 100% no-repeat; mask: url(../assets/avatars/feuer_cut.png) center / 100% 100% no-repeat;
+  background:
+    radial-gradient(circle at 50% 62%, rgba(255,235,120,.95) 0 9%, rgba(255,170,40,.55) 22%, transparent 42%),
+    radial-gradient(circle at 36% 78%, rgba(255,220,90,.85) 0 6%, rgba(255,150,30,.45) 16%, transparent 32%),
+    radial-gradient(circle at 66% 70%, rgba(255,210,80,.8) 0 6%, rgba(255,140,30,.4) 16%, transparent 30%);
+  background-size: 100% 100%, 100% 100%, 100% 100%;
+  mix-blend-mode: screen; opacity: .0;
+  animation: av-glow 3.6s ease-in-out var(--d, 0s) infinite, av-rise 5.4s ease-in-out var(--d, 0s) infinite;
+}
+@keyframes av-glow { 0%,100% { opacity: .15; } 35% { opacity: .85; } 60% { opacity: .45; } 80% { opacity: .75; } }
+@keyframes av-rise { 0%,100% { background-position: 0 4%, 3% 8%, -3% 5%; } 50% { background-position: 0 -6%, -4% -10%, 4% -8%; } }
+@media (prefers-reduced-motion: reduce) { .av-feuer .fb::after { animation: none; opacity: .4; } }
