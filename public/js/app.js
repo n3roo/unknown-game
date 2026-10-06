@@ -468,7 +468,7 @@
   const SEAT_POS = {
     1: [[50, 2]],
     2: [[26, 5], [74, 5]],
-    3: [[16, 12], [50, 0], [84, 12]],
+    3: [[18, 15], [50, 0], [82, 15]],
   };
 
   /** Stapel auf dem Tisch: oberste Karte sichtbar, Zahl als Marke, Tippen öffnet beide Stapel des Spielers. */

@@ -1163,4 +1163,14 @@ body.drop-ready .table-surface { box-shadow: 0 0 0 1.2cqw rgba(110,230,140,.8), 
 
 /* Stempel oben an der Mittelkarte, damit die eigene Geheimkarte ihn nicht verdeckt */
 .board .last { position: relative; }
-.board .last .stamp { position: absolute; top: -2.4cqw; left: 0; right: 0; margin: 0 auto; width: max-content; max-width: 100%; z-index: 6; }
+.board .last .stamp { position: absolute; top: -2.4cqw; left: 0; right: 0; margin: 0 auto; width: max-content; z-index: 6; }
+
+/* Tisch exakt mittig (Bild ist symmetrisch) */
+.board .table-surface { left: 50%; right: auto; width: 146cqw; margin-left: -73cqw; }
+/* Geheimkarte des Spielers nicht anzeigen */
+.board .s3.me .s3-secret { display: none; }
+.ticker .tk:nth-child(n+2) { display: none; }
+.ticker { width: 6cqw; opacity: .8; }
+.board .center { top: 80cqw; }
+.board .center { top: 85cqw; }
+.board .s3.opp .s3-fig { translate: 0 3.5cqw; }
