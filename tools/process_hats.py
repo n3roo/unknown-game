@@ -45,7 +45,8 @@ def smile_cut(img, frac):
     edge = H * (1 - frac * (0.35 + 0.65 * xs ** 2))
     a[..., 3] = np.where(ys > edge, 0, a[..., 3])
     out = Image.fromarray(a, 'RGBA'); return out.crop(out.split()[3].getbbox())
-for k in out: out[k] = smile_cut(out[k], CUT.get(k, 0))
+if '--cut' in sys.argv:
+    for k in out: out[k] = smile_cut(out[k], CUT.get(k, 0))  # nur für Raster mit sichtbarem Innenrand
 CW,CH = 400,280
 for id_,hat in out.items():
     s = min(CW/hat.width, CH*0.94/hat.height); hat = hat.resize((max(1,int(hat.width*s)),max(1,int(hat.height*s))), Image.LANCZOS)
