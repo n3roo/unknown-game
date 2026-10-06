@@ -704,7 +704,6 @@ body.room {
    ===================================================================== */
 body.night {
   background:
-    radial-gradient(circle at 82% 8%, rgba(255,243,200,.55) 0 2.2%, rgba(255,243,200,.0) 2.6%),
     radial-gradient(ellipse 80% 40% at 50% 0%, rgba(80,70,170,.40), transparent 70%),
     radial-gradient(ellipse 90% 40% at 50% 105%, rgba(255,150,60,.22), transparent 70%),
     linear-gradient(180deg, #121536 0%, #0c0e24 45%, #0a0710 100%);
@@ -899,3 +898,15 @@ button { touch-action: manipulation; }
 .board .table-surface { left: -19cqw; width: 138cqw; height: 73.7cqw; top: 40cqw; background-size: 100% 100%; }
 /* Tisch tiefer: reicht bis unter die eigenen Stapel */
 .board .table-surface { left: -23cqw; width: 146cqw; top: 50cqw; height: calc(100cqw + var(--ex, 0cqw)); background-size: 100% 100%; }
+
+/* Tagesbelohnung & Missionen */
+.today .daily-row { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.dd { display: grid; justify-items: center; padding: 5px 0; border-radius: 8px; background: rgba(255,255,255,.07); border: 1px solid transparent; font-size: 12px; }
+.dd small { font-size: 9px; color: #aab0e0; } .dd b { font-size: 13px; }
+.dd.done { background: rgba(80,200,120,.25); border-color: rgba(80,200,120,.5); }
+.dd.next { border-color: #e8a94a; background: rgba(232,169,74,.2); animation: btnpulse 1.8s ease-in-out infinite; }
+.missions { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 6px; }
+.missions li { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; padding: 8px 10px; border-radius: 10px; background: rgba(255,255,255,.06); }
+.missions li.done { opacity: .55; }
+.ms-t { display: grid; gap: 3px; } .ms-t small { color: #aab0e0; }
+.ms-ok { color: #6be28a; font-weight: 900; font-size: 20px; padding: 0 8px; }

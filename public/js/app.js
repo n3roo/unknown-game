@@ -258,6 +258,9 @@
       case 'leaderboard':
         S.lb = m; if (S.ui.modal && S.ui.modal.type === 'leaderboard') renderModals();
         break;
+      case 'claimed':
+        SFX.coin(); toast(`+${m.gold} Gold${m.kind === 'daily' ? ` · Serie ${m.streak}` : ''}`);
+        break;
       case 'error':
         toast(m.message, true);
         break;
@@ -315,6 +318,7 @@
         </div>
       </div>
       <button class="tile-big ranked" data-act="ranked"><span class="tb-txt"><b>Ranked</b><small>${lg ? `${lg.icon} ${lg.name} · ${me.rating} Punkte` : 'Steige in der Rangliste auf'}</small></span><i>›</i></button>
+      ${todayHTML()}
       <button class="tile-big play" data-act="create"><span class="tb-txt"><b>Lobby erstellen</b><small>Spiel mit Freunden · 2–4 Spieler</small></span><i>›</i></button>
       <div class="tile-big join">
         <span class="tb-txt"><b>Beitreten</b><small>Code von deinen Freunden</small></span>
@@ -332,6 +336,33 @@
         <button class="tile" data-act="rules"><b>Spielregeln</b><span>Kurz erklärt</span><em>📜</em></button>
       </div>
       ${S.open ? '' : '<p class="hint center" id="conn-hint">Verbindung wird aufgebaut …</p>'}`;
+  }
+
+  /** Tagesbelohnung und Missionen (Hauptmenü). */
+  function todayHTML() {
+    const me = S.me;
+    if (!me || !me.daily) return '';
+    const d = me.daily;
+    const days = d.rewards.map((g, i) => {
+      const done = d.claimedToday ? i < d.streak % 7 || (d.streak % 7 === 0 && d.streak > 0) : i < d.streak % 7;
+      const isNext = !d.claimedToday && i === d.nextDay - 1;
+      return `<span class="dd ${done ? 'done' : ''} ${isNext ? 'next' : ''}"><small>Tag ${i + 1}</small><b>${g}</b></span>`;
+    }).join('');
+    const claim = d.claimedToday
+      ? '<p class="hint center" style="margin:6px 0 0">Heute abgeholt. Morgen geht es weiter.</p>'
+      : `<button class="btn primary" data-act="claimdaily">Tagesbelohnung abholen · +${d.nextReward} 🪙</button>`;
+    const ms = me.missions.map((m) => {
+      const ready = m.progress >= m.goal && !m.claimed;
+      return `<li class="${m.claimed ? 'done' : ''}">
+        <div class="ms-t"><b>${esc(m.text)}</b><div class="bar"><i style="width:${(m.progress / m.goal) * 100}%"></i></div><small>${m.progress}/${m.goal}</small></div>
+        ${m.claimed ? '<span class="ms-ok">✓</span>' : `<button class="btn small ${ready ? 'primary' : 'ghost'}" data-act="claimmission" data-id="${esc(m.id)}" ${ready ? '' : 'disabled'}>+${m.reward} 🪙</button>`}</li>`;
+    }).join('');
+    return `<section class="panel stack today">
+      <div class="sec-h"><b>Heute</b><span class="muted">Serie: ${d.streak} ${d.streak === 1 ? 'Tag' : 'Tage'}</span></div>
+      <div class="daily-row">${days}</div>
+      ${claim}
+      <ul class="missions">${ms}</ul>
+    </section>`;
   }
 
   function renderLobby() {
@@ -981,6 +1012,8 @@
     prevhat(t) { S.ui.prevHat = t.dataset.hat; renderModals(); },
     buy(t) { send({ type: 'buy', hat: t.dataset.hat }); },
     equip(t) { send({ type: 'equip', hat: t.dataset.hat || null }); },
+    claimdaily() { send({ type: 'claimdaily' }); },
+    claimmission(t) { send({ type: 'claimmission', id: t.dataset.id }); },
     togglesound() { SFX.on = !SFX.on; renderModals(); },
     togglevib() { SFX.vib = !SFX.vib; renderModals(); },
     account() { S.ui.modal = { type: 'account' }; renderModals(); },

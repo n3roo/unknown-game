@@ -334,6 +334,24 @@ const handlers = {
     sendProfile(ws);
   },
 
+  claimdaily(ws) {
+    if (!ws.profile) return;
+    const r = E.M.claimDaily(ws.profile);
+    if (r.error) return send(ws, { type: 'error', message: r.error });
+    saveProfile(ws.profile);
+    sendProfile(ws);
+    send(ws, { type: 'claimed', kind: 'daily', gold: r.gold, streak: r.streak });
+  },
+
+  claimmission(ws, msg) {
+    if (!ws.profile) return;
+    const r = E.M.claimMission(ws.profile, String(msg.id ?? ''));
+    if (r.error) return send(ws, { type: 'error', message: r.error });
+    saveProfile(ws.profile);
+    sendProfile(ws);
+    send(ws, { type: 'claimed', kind: 'mission', gold: r.gold });
+  },
+
   equip(ws, msg) {
     if (!ws.profile) return;
     const r = E.equipHat(ws.profile, msg.hat === null || msg.hat === undefined ? null : String(msg.hat));
