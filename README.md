@@ -49,3 +49,6 @@ Laufende Räume werden gebündelt (alle 0,8 s bei Änderungen) im Store gesicher
 
 ## Freunde
 Freundescode = erste 8 Zeichen der Profil-ID (`ABCD-1234`). Anfrage per Code oder Link `/?friend=ABCD1234`, annehmen/ablehnen/entfernen, Online-Status, Freunde in die eigene Lobby einladen (Popup beim Freund) und Lobby eines Freundes direkt beitreten. Logik in `lib/friends.js`.
+
+## Benachrichtigungen (Web-Push)
+Ohne externe Bibliothek (`lib/push.js`, RFC 8291 + VAPID). Die Schlüssel werden beim ersten Start erzeugt und im Store (Turso-Tabelle `kv`) gespeichert, optional per `VAPID_PUBLIC`/`VAPID_PRIVATE`/`VAPID_SUBJECT`. Nutzer schalten sie im Konto oder in der Freundesliste ein. Push gibt es für Freundschaftsanfragen und Lobby-Einladungen an Offline-Freunde; der Tipp auf die Einladung tritt der Lobby automatisch bei.

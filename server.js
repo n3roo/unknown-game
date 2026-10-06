@@ -15,6 +15,7 @@ const E = require('./lib/economy');
 const { leagueOf, LEAGUES } = require('./lib/rating');
 const B = require('./lib/bot');
 const FR = require('./lib/friends');
+const { Pusher } = require('./lib/push');
 const { Queue } = require('./lib/queue');
 const { createStore } = require('./lib/store');
 
@@ -228,6 +229,16 @@ function notifyFriendsOf(profile, except = null) {
   for (const id of FR.norm(profile).friends) socketsOf(id).forEach((c) => { if (c !== except) sendFriends(c); });
 }
 const inviteCooldown = new Map();
+const pusher = new Pusher(store);
+/** Benachrichtigung an ein Profil, das gerade nicht in der App ist (nur wenn es Abos hat). */
+async function pushTo(profileId, payload) {
+  if (socketsOf(profileId).length) return false;
+  const p = await getProfile(profileId);
+  if (!p || !p.push || !p.push.length) return false;
+  const keep = await pusher.send(p.push, payload);
+  if (keep.length !== p.push.length) { p.push = keep; saveProfile(p); }
+  return true;
+}
 
 /** Spielerdaten aus dem Profil in eine Partie übernehmen (Hut, Rating, Land). */
 function syncPlayerFromProfile(room, profile) {
@@ -461,6 +472,22 @@ const handlers = {
     notifyFriendsOf(ws.profile, ws);
   },
 
+  async pushkey(ws) { send(ws, { type: 'pushkey', key: await pusher.key() }); },
+  pushsub(ws, msg) {
+    const sub = msg.sub;
+    if (!ws.profile || !sub || typeof sub.endpoint !== 'string' || !/^https:\/\//.test(sub.endpoint) || sub.endpoint.length > 700) return;
+    const k = sub.keys || {};
+    if (typeof k.p256dh !== 'string' || typeof k.auth !== 'string' || k.p256dh.length > 200 || k.auth.length > 100) return;
+    ws.profile.push = [...(ws.profile.push || []).filter((s) => s.endpoint !== sub.endpoint), { endpoint: sub.endpoint, keys: { p256dh: k.p256dh, auth: k.auth } }].slice(-3);
+    saveProfile(ws.profile);
+    send(ws, { type: 'toast', message: 'Benachrichtigungen sind an 🔔' });
+  },
+  pushoff(ws, msg) {
+    if (!ws.profile) return;
+    ws.profile.push = (ws.profile.push || []).filter((s) => s.endpoint !== msg.endpoint);
+    saveProfile(ws.profile);
+  },
+
   /** Freundesliste anfordern. */
   friends(ws) { sendFriends(ws); },
 
@@ -477,6 +504,7 @@ const handlers = {
     saveProfile(ws.profile); saveProfile(other);
     send(ws, { type: 'toast', message: r.accepted ? `Du bist jetzt mit ${other.name} befreundet 🎉` : `Anfrage an ${other.name} gesendet` });
     sendFriends(ws);
+    pushTo(other.id, { title: 'UNKNOWN', body: r.accepted ? `${ws.profile.name} ist jetzt dein Freund 🎉` : `${ws.profile.name} möchte dein Freund sein`, tag: 'friend', url: '/' });
     for (const c of socketsOf(other.id)) {
       send(c, { type: 'toast', message: r.accepted ? `${ws.profile.name} ist jetzt dein Freund 🎉` : `${ws.profile.name} möchte dein Freund sein` });
       sendFriends(c);
@@ -492,6 +520,7 @@ const handlers = {
     saveProfile(ws.profile); saveProfile(other);
     send(ws, { type: 'toast', message: `Du bist jetzt mit ${other.name} befreundet 🎉` });
     sendFriends(ws);
+    pushTo(other.id, { title: 'UNKNOWN', body: `${ws.profile.name} hat deine Anfrage angenommen 🎉`, tag: 'friend', url: '/' });
     for (const c of socketsOf(other.id)) { send(c, { type: 'toast', message: `${ws.profile.name} hat deine Anfrage angenommen 🎉` }); sendFriends(c); }
   },
 
@@ -524,7 +553,16 @@ const handlers = {
     if (room.game.players.length >= 4) return send(ws, { type: 'error', message: 'Die Lobby ist voll.' });
     const other = await getProfile(id);
     const socks = socketsOf(id);
-    if (!socks.length) return send(ws, { type: 'error', message: `${other ? other.name : 'Dein Freund'} ist gerade offline.` });
+    if (!socks.length) {
+      if (other && other.push && other.push.length) {
+        const key = `${me.id}>${id}`;
+        if (Date.now() - (inviteCooldown.get(key) || 0) < 4000) return;
+        inviteCooldown.set(key, Date.now());
+        pushTo(id, { title: `${me.name} lädt dich ein`, body: 'Tippe, um der Lobby beizutreten.', tag: `invite-${room.code}`, url: `/?code=${room.code}&auto=1` });
+        return send(ws, { type: 'toast', message: `${other.name} ist offline – Benachrichtigung gesendet` });
+      }
+      return send(ws, { type: 'error', message: `${other ? other.name : 'Dein Freund'} ist gerade offline.` });
+    }
     const free = socks.filter((c) => !c.ctx);
     if (!free.length) return send(ws, { type: 'error', message: `${other.name} ist gerade in einer Lobby oder Partie.` });
     const key = `${me.id}>${id}`;
@@ -613,7 +651,7 @@ const handlers = {
       type: 'leaderboard',
       scope: region ? 'region' : 'world',
       region,
-      rows: rows.map((r, i) => ({ rank: i + 1, ...E.publicView(r), you: !!p && r.id === p.id })),
+      rows: rows.map((r, i) => ({ rank: i + 1, ...E.publicView(r), you: !!p && r.id === p.id, fc: FR.codeOf(r.id), friend: !!p && FR.norm(p).friends.includes(r.id), pending: !!p && FR.norm(p).reqOut.includes(r.id) })),
       you: p && me ? { rank: me, rating: p.rating } : null,
     });
   },

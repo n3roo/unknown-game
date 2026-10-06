@@ -246,6 +246,11 @@
         break;
       case 'profile':
         { const old = S.me; if (old && m.profile.hats.length > old.hats.length) SFX.buy(); }
+        if (!S.autoDone) {
+          S.autoDone = true;
+          const q = new URLSearchParams(location.search);
+          if (q.get('code') && q.get('auto')) { const code = q.get('code').toUpperCase(); history.replaceState(null, '', location.pathname); setTimeout(() => send({ type: 'join', code, name: S.profile.name, avatar: S.profile.avatar }), 300); }
+        }
         S.me = m.profile; S.storeKind = m.store; if (m.regions) S.regions = m.regions; if (m.leagues) S.leagues = m.leagues; S.rankedBots = !!m.rankedBots;
         if (!S.profile.name) { S.profile.name = S.me.name; saveProfile(); }
         if (S.me.avatar && !S.st) { S.profile.avatar = S.me.avatar; saveProfile(); }
@@ -274,6 +279,7 @@
         break;
       }
       case 'invite': showInvite(m); break;
+      case 'pushkey': if (S.wantPush) { S.wantPush = false; subscribePush(m.key); } break;
       case 'error':
         toast(m.message, true);
         break;
@@ -897,7 +903,7 @@
     const tabs = `<div class="tabs"><button data-act="lbscope" data-scope="world" aria-pressed="${scope === 'world'}">🌍 Weltweit</button><button data-act="lbscope" data-scope="region" aria-pressed="${scope === 'region'}">${flag(S.me && S.me.region)} Mein Land</button></div>`;
     let body = '<p class="muted center">Lade …</p>';
     if (lb && lb.scope === scope) {
-      body = lb.rows.length ? `<ol class="lb">${lb.rows.map((r) => `<li class="${r.you ? 'you' : ''}"><em>${r.rank <= 3 ? ['🥇', '🥈', '🥉'][r.rank - 1] : r.rank}</em><span class="lb-av">${avatarHTML(r.avatar, 32)}</span><span class="lb-n"><b>${flag(r.region)} ${esc(r.name)}</b><small>${leagueDef(r.league).icon} ${esc(leagueDef(r.league).name)} · Lv ${r.level}</small></span><strong>${r.rating}</strong></li>`).join('')}</ol>`
+      body = lb.rows.length ? `<ol class="lb">${lb.rows.map((r) => `<li class="${r.you ? 'you' : ''}"><em>${r.rank <= 3 ? ['🥇', '🥈', '🥉'][r.rank - 1] : r.rank}</em><span class="lb-av">${avatarHTML(r.avatar, 32)}</span><span class="lb-n"><b>${flag(r.region)} ${esc(r.name)}</b><small>${leagueDef(r.league).icon} ${esc(leagueDef(r.league).name)} · Lv ${r.level}</small></span><strong>${r.rating}</strong>${r.you ? '' : r.friend ? '<span class="lb-f" title="Freund">👥</span>' : r.pending ? '<span class="lb-f" title="Anfrage gesendet">⏳</span>' : `<button class="lb-add" data-act="lbadd" data-code="${esc(r.fc)}" aria-label="Als Freund hinzufügen">＋</button>`}</li>`).join('')}</ol>`
         : '<p class="muted center">Noch niemand in dieser Rangliste. Spiel Ranked und sei der Erste!</p>';
       if (lb.you) body += `<p class="hint center">Dein Platz: <b>${lb.you.rank}</b> (${lb.you.rating} Punkte)</p>`;
     }
@@ -980,6 +986,7 @@
       <h3 class="fr-h">Freunde (${f.friends.length})</h3>
       ${online.length ? list(online, 'friend') : '<p class="hint">Noch keine Freunde. Tausche deinen Code mit jemandem und gib seinen oben ein.</p>'}
       ${f.outgoing.length ? `<h3 class="fr-h">Gesendet</h3>${list(f.outgoing, 'out')}` : ''}
+      ${pushSupported() && !S.pushOn ? `<div class="row" style="margin-top:10px">${pushButton()}</div>` : ''}
       <button class="btn" data-act="close">Schließen</button>`;
   }
   let inviteTimer = null;
@@ -996,6 +1003,26 @@
   }
   const hideInvite = () => { const el = document.getElementById('invite-pop'); if (el) el.className = ''; clearTimeout(inviteTimer); };
 
+  /* ------------------------------------------------- Benachrichtigungen */
+
+  const pushSupported = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+  async function refreshPushState() {
+    if (!pushSupported()) { S.pushOn = null; return; }
+    try { const reg = await navigator.serviceWorker.ready; S.pushOn = !!(await reg.pushManager.getSubscription()) && Notification.permission === 'granted'; } catch { S.pushOn = false; }
+    if (S.ui.modal && ['account', 'friends'].includes(S.ui.modal.type)) renderModals();
+  }
+  async function subscribePush(key) {
+    try {
+      if (!key) return toast('Benachrichtigungen sind gerade nicht verfügbar.', true);
+      const reg = await navigator.serviceWorker.ready;
+      const raw = atob(key.replace(/-/g, '+').replace(/_/g, '/'));
+      const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: Uint8Array.from(raw, (c) => c.charCodeAt(0)) });
+      send({ type: 'pushsub', sub: sub.toJSON() });
+      S.pushOn = true; renderModals();
+    } catch (err) { toast('Benachrichtigungen konnten nicht aktiviert werden.', true); }
+  }
+  const pushButton = () => (S.pushOn === null ? '' : `<button class="btn small ${S.pushOn ? '' : 'primary'}" data-act="togglepush">${S.pushOn ? '🔔 Benachrichtigungen an' : '🔕 Benachrichtigungen einschalten'}</button>`);
+
   function accountHTML() {
     const me = S.me; const sec = deviceSecret();
     const grouped = sec.match(/.{1,4}/g).join('-');
@@ -1003,6 +1030,7 @@
       <p class="muted" style="margin-top:0">${me ? `${esc(me.name)} · Level ${me.level} · ${me.played} Spiele · ${me.wins} Siege` : ''}</p>
       ${S.storeKind === 'memory' ? '<p class="hint warn">Hinweis: Der Server speichert gerade nur vorübergehend. Nach einem Neustart kann der Spielstand weg sein.</p>' : ''}
       <div class="row" style="margin:6px 0"><button class="btn small ${SFX.on ? '' : 'ghost'}" data-act="togglesound">${SFX.on ? '🔊 Sound an' : '🔇 Sound aus'}</button><button class="btn small ${SFX.vib ? '' : 'ghost'}" data-act="togglevib">${SFX.vib ? '📳 Vibration an' : 'Vibration aus'}</button></div>
+      ${pushSupported() ? `<div class="row" style="margin:6px 0">${pushButton()}</div><p class="hint" style="margin:0 0 6px">Melde dich bei Freundschaftsanfragen und Lobby-Einladungen, auch wenn die App zu ist.</p>` : ''}
       <p style="margin:8px 0 4px"><b>Wiederherstellungs-Code</b></p>
       <p class="hint" style="margin:0 0 6px">Damit holst du dein Konto (Gold, Hüte, Rang) auf einem anderen Gerät zurück. Geheim halten!</p>
       <div class="secret" id="secret-box">${grouped}</div>
@@ -1102,7 +1130,7 @@
     ranked() { S.ui.modal = { type: 'ranked' }; renderModals(); },
     rankedjoin() { send({ type: 'rankedjoin' }); },
     devcode() { const v = (document.getElementById('in-dev') || {}).value || ''; if (v) send({ type: 'devcode', code: v }); },
-    friends() { S.ui.frConfirm = null; S.ui.modal = { type: 'friends' }; send({ type: 'friends' }); renderModals(); },
+    friends() { refreshPushState(); S.ui.frConfirm = null; S.ui.modal = { type: 'friends' }; send({ type: 'friends' }); renderModals(); },
     friendadd() {
       const el = document.getElementById('in-fcode'); const v = el ? el.value.trim() : '';
       if (!v) return toast('Gib den Code deines Freundes ein.', true);
@@ -1125,6 +1153,15 @@
         await navigator.clipboard.writeText(url); toast('Link kopiert.');
       } catch { /* abgebrochen */ }
     },
+    async togglepush() {
+      if (!pushSupported()) return toast('Dein Browser unterstützt das leider nicht.', true);
+      const reg = await navigator.serviceWorker.ready; const cur = await reg.pushManager.getSubscription();
+      if (cur && S.pushOn) { send({ type: 'pushoff', endpoint: cur.endpoint }); await cur.unsubscribe(); S.pushOn = false; toast('Benachrichtigungen aus'); renderModals(); return; }
+      const perm = await Notification.requestPermission();
+      if (perm !== 'granted') return toast('Benachrichtigungen sind in den Browser-Einstellungen blockiert.', true);
+      S.wantPush = true; send({ type: 'pushkey' });
+    },
+    lbadd(t) { send({ type: 'friendadd', code: t.dataset.code }); setTimeout(() => send({ type: 'leaderboard', scope: S.ui.lbScope }), 500); },
     botgame() { send({ type: 'botgame', bots: 2 }); },
     rankedleave() { send({ type: 'rankedleave' }); },
     rankedagain() { leaveNow(); S.ui.modal = { type: 'ranked' }; send({ type: 'rankedjoin' }); renderModals(); },
@@ -1143,7 +1180,7 @@
     tutdone() { LS.set('unknown.tutorial', 1); S.ui.modal = null; renderModals(); },
     togglesound() { SFX.on = !SFX.on; renderModals(); },
     togglevib() { SFX.vib = !SFX.vib; renderModals(); },
-    account() { S.ui.modal = { type: 'account' }; renderModals(); },
+    account() { refreshPushState(); S.ui.modal = { type: 'account' }; renderModals(); },
     async copysecret() { try { await navigator.clipboard.writeText(deviceSecret()); toast('Code kopiert.'); } catch { toast('Kopieren nicht möglich – bitte markieren und kopieren.', true); } },
     restore() {
       const v = (document.getElementById('in-restore').value || '').toLowerCase().replace(/[^0-9a-f]/g, '');

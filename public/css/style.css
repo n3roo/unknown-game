@@ -975,3 +975,6 @@ body.drop-ready .table-surface { box-shadow: 0 0 0 1.2cqw rgba(110,230,140,.8), 
 #invite-pop .ip-t { flex: 1; min-width: 0; color: #f6e7c4; }
 .fr-list { padding-inline: 0 !important; margin-inline: 0 !important; width: 100%; }
 .fr-n small { white-space: normal; }
+
+.lb-add { width: 34px; height: 34px; border-radius: 10px; border: 1px solid #5a4630; background: rgba(232,169,74,.18); color: #ffd98a; font: 800 18px/1 system-ui; cursor: pointer; margin-left: 8px; flex: none; }
+.lb-f { margin-left: 8px; font-size: 18px; flex: none; }
