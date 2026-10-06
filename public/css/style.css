@@ -1250,3 +1250,13 @@ body.drop-ready .table-surface { box-shadow: 0 0 0 1.2cqw rgba(110,230,140,.8), 
 .tabbar svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .tabbar button:first-child { color: #ffd45a; }
 #app:has(.tabbar) { padding-bottom: 96px; }
+
+/* ---------- Garderobe + Shop in einem ---------- */
+.wd-info { text-align: center; margin: 4px 0 8px; display: grid; gap: 2px; }
+.wd-info b { font-size: 19px; } .wd-info small { color: #bbb; font-size: 12.5px; min-height: 16px; }
+.wd-action { margin-bottom: 12px; }
+.wd-action .btn { width: 100%; }
+.wd-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 4px; margin-bottom: 10px; border-radius: 14px; background: rgba(0,0,0,.35); }
+.wd-tabs button { min-height: 40px; border: 0; border-radius: 11px; background: transparent; color: #d8cdb8; font: 800 14px system-ui, sans-serif; cursor: pointer; }
+.wd-tabs button.on { background: #e8a94a; color: #2a1608; }
+.hat-item.worn { border-color: #6be28a; }

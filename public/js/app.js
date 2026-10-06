@@ -1018,16 +1018,49 @@
       <span class="hi-svg">${h ? (window.HATS || {})[h.id] || '' : '<i class="nohat">🚫</i>'}</span><b>${esc(h ? h.name : 'Ohne Hut')}</b><small>${state.label}</small></button>`;
 
   /** Garderobe: nur besessene Hüte, Tippen zieht sofort an. */
+  /** Garderobe und Shop in einem: Tabs Avatare / Hüte, Vorschau oben, eine Aktion (anlegen oder kaufen). */
   function wardrobeHTML() {
     const me = S.me;
     if (!me) return '<p>Profil wird geladen …</p><button class="btn" data-act="close">Schließen</button>';
-    const mine = S.hatsDef.filter((h) => me.hats.includes(h.id));
-    return `<h2 style="margin:0 0 6px">Garderobe</h2>
-      <div class="wd-stage">${figHTML(me.avatar, 'wd-fig', me.hat)}</div>
-      <div class="hat-grid">${hatItem(null, me, { sel: !me.hat, own: false, act: 'equip', label: me.hat ? 'Ausziehen' : 'Getragen' })}
-        ${mine.map((h) => hatItem(h, me, { sel: me.hat === h.id, own: true, act: 'equip', label: me.hat === h.id ? 'Getragen' : 'Anziehen' })).join('')}</div>
-      ${mine.length ? '' : '<p class="hint center">Du hast noch keine Hüte. Im Shop gibt es welche!</p>'}
-      <button class="btn ghost" data-act="shop">🛒 Zum Shop</button>
+    const wd = S.ui.wd || (S.ui.wd = { tab: 'avatars', sel: null });
+    const curAv = S.profile.avatar || me.avatar;
+    const avOwned = (a) => !a.price || (me.avatars || []).includes(a.id);
+    const hOwned = (id) => me.hats.includes(id);
+    const sel = wd.sel;
+    const showAv = sel && sel.kind === 'avatar' ? sel.id : curAv;
+    const showHat = sel && sel.kind === 'hat' ? (sel.id || null) : me.hat;
+    let title = ''; let sub = ''; let action = '';
+    const need = (price) => (me.gold < price ? 'disabled' : '');
+    const lack = (price) => (me.gold < price ? `<p class="hint center" style="margin:6px 0 0">Dir fehlen ${price - me.gold} Gold.</p>` : '');
+    if (sel && sel.kind === 'avatar') {
+      const a = S.data.avatars.find((x) => x.id === sel.id);
+      title = a.name;
+      if (!avOwned(a)) { sub = `${a.price} 🪙 · Premium`; action = `<button class="btn primary" data-act="buyavatar" data-id="${a.id}" ${need(a.price)}>${esc(a.name)} kaufen · ${a.price} 🪙</button>${lack(a.price)}`; }
+      else if (a.id === curAv) { sub = 'Gerade aktiv'; action = '<button class="btn" disabled>✓ Aktiv</button>'; }
+      else { sub = 'Gehört dir'; action = `<button class="btn primary" data-act="wdwear" data-id="${a.id}">Anlegen</button>`; }
+    } else if (sel && sel.kind === 'hat' && sel.id) {
+      const h = hatDef(sel.id);
+      title = h.name;
+      if (hOwned(h.id)) { const on = me.hat === h.id; sub = on ? 'Wird getragen' : 'Gehört dir'; action = `<button class="btn ${on ? '' : 'primary'}" data-act="equip" data-hat="${on ? '' : h.id}">${on ? 'Ausziehen' : 'Anziehen'}</button>`; }
+      else if (h.league) { sub = '🔒 Liga-Hut'; action = `<p class="hint center" style="margin:0">Den bekommst du beim Aufstieg in die ${esc(leagueDef(h.league).name)}-Liga.</p>`; }
+      else { sub = `${h.price} 🪙`; action = `<button class="btn primary" data-act="buy" data-hat="${h.id}" ${need(h.price)}>Kaufen · ${h.price} 🪙</button>${lack(h.price)}`; }
+    } else if (sel && sel.kind === 'hat') {
+      title = 'Ohne Hut'; sub = me.hat ? '' : 'Gerade aktiv';
+      action = me.hat ? '<button class="btn" data-act="equip" data-hat="">Hut ausziehen</button>' : '<button class="btn" disabled>✓ Aktiv</button>';
+    } else {
+      const a = S.data.avatars.find((x) => x.id === curAv);
+      title = a ? a.name : ''; sub = 'Tippe unten etwas an, um es anzuprobieren';
+    }
+    const grid = wd.tab === 'avatars'
+      ? `<div class="hat-grid av-shop">${S.data.avatars.map((a) => `<button class="hat-item ${sel && sel.kind === 'avatar' && sel.id === a.id ? 'sel' : ''} ${avOwned(a) ? 'own' : ''} ${a.id === curAv ? 'worn' : ''}" data-act="wdpick" data-kind="avatar" data-id="${a.id}" aria-label="${esc(a.name)}"><span class="hi-av">${avatarHTML(a.id, 58)}</span><b>${esc(a.name)}</b><small>${a.id === curAv ? 'Aktiv' : avOwned(a) ? '✓ Im Besitz' : `${a.price} 🪙`}</small></button>`).join('')}</div>`
+      : `<div class="hat-grid">${hatItem(null, me, { sel: sel && sel.kind === 'hat' && !sel.id, own: false, act: 'wdhat', label: '' })}${S.hatsDef.filter((h) => !h.special || hOwned(h.id)).map((h) => hatItem(h, me, { sel: sel && sel.kind === 'hat' && sel.id === h.id, own: hOwned(h.id), act: 'wdhat', label: me.hat === h.id ? 'Getragen' : hOwned(h.id) ? '✓ Im Besitz' : h.league ? '🔒 Liga' : `${h.price} 🪙` })).join('')}</div>`;
+    return `<div class="wd-top"><h2 style="margin:0">Garderobe</h2><span class="gold-pill">🪙 ${me.gold}</span></div>
+      <div class="wd-stage">${figHTML(showAv, 'wd-fig', showHat)}</div>
+      <div class="wd-info"><b>${esc(title)}</b><small>${esc(sub)}</small></div>
+      <div class="wd-action">${action}</div>
+      <div class="wd-tabs" role="tablist"><button role="tab" aria-selected="${wd.tab === 'avatars'}" class="${wd.tab === 'avatars' ? 'on' : ''}" data-act="wdtab" data-tab="avatars">Avatare</button><button role="tab" aria-selected="${wd.tab === 'hats'}" class="${wd.tab === 'hats' ? 'on' : ''}" data-act="wdtab" data-tab="hats">Hüte</button></div>
+      ${grid}
+      ${adButtonHTML()}
       <button class="btn" data-act="close">Schließen</button>`;
   }
 
@@ -1358,8 +1391,12 @@
     rankedagain() { leaveNow(); S.ui.modal = { type: 'ranked' }; send({ type: 'rankedjoin' }); renderModals(); },
     leaderboard() { S.ui.modal = { type: 'leaderboard' }; S.lb = null; send({ type: 'leaderboard', scope: S.ui.lbScope }); renderModals(); },
     lbscope(t) { S.ui.lbScope = t.dataset.scope; S.lb = null; send({ type: 'leaderboard', scope: S.ui.lbScope }); renderModals(); },
-    wardrobe() { S.ui.modal = { type: 'wardrobe' }; renderModals(); },
-    shop() { S.ui.modal = { type: 'shop' }; S.ui.prevHat = null; S.ui.prevAv = null; renderModals(); },
+    wardrobe() { S.ui.wd = { tab: 'avatars', sel: null }; S.ui.modal = { type: 'wardrobe' }; renderModals(); },
+    wdtab(t) { S.ui.wd = { tab: t.dataset.tab, sel: null }; renderModals(); },
+    wdpick(t) { S.ui.wd.sel = { kind: 'avatar', id: t.dataset.id }; renderModals(); },
+    wdhat(t) { S.ui.wd.sel = { kind: 'hat', id: t.dataset.hat || null }; renderModals(); },
+    wdwear(t) { actions.avatar({ dataset: { id: t.dataset.id } }); renderModals(); },
+    shop() { S.ui.wd = { tab: 'hats', sel: null }; S.ui.modal = { type: 'wardrobe' }; renderModals(); },
     prevhat(t) { S.ui.prevHat = t.dataset.hat; S.ui.prevAv = null; renderModals(); },
     prevav(t) { S.ui.prevAv = t.dataset.id; S.ui.prevHat = null; renderModals(); },
     buyavatar(t) { send({ type: 'buyavatar', avatar: t.dataset.id }); },
