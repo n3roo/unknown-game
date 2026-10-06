@@ -388,7 +388,7 @@
   function centerHTML() {
     const st = S.st;
     const last = [...st.events].reverse().find((e) => e.type === 'play' || e.type === 'guess');
-    let card = '<div class="last-empty">Noch keine Karte<br>ausgespielt</div>';
+    let card = st.phase === 'clues' ? '' : '<div class="last-empty">Noch keine Karte<br>ausgespielt</div>';
     if (last) {
       const p = byId(last.player);
       const ok = last.type === 'play' ? last.related : last.ok;
@@ -519,7 +519,7 @@
         <button class="icon-btn" data-act="leavepage" aria-label="Spiel verlassen">⎋</button>
       </div>
       <div class="statusline ${status.mine ? 'mine' : ''}">${esc(line)}</div>
-      <section class="board" aria-label="Spieltisch">
+      <section class="board" aria-label="Spieltisch"><div class="bstage">
         <span class="lantern l"></span><span class="lantern r"></span>
         <div class="table-surface"></div>
         ${others.map((i, k) => seatHTML(st.players[i], i, false, pos[k])).join('')}
@@ -528,8 +528,25 @@
         ${actions ? `<div class="actions-row">${actions}</div>` : ''}
         ${seatHTML(me, st.you, true, null)}
         <div class="hand" aria-label="Deine Handkarten">${handCards.join('')}</div>
-      </section>`;
+      </div></section>`;
+    fitBoard();
   }
+
+  /** Kurze Bildschirme: den ganzen Tisch gleichmäßig verkleinern, damit nichts übereinanderliegt. */
+  const DESIGN_H = 1.85; // Spielfeld ist für Höhe = 1,85 x Breite entworfen
+  function fitBoard() {
+    const board = document.querySelector('.board');
+    const stage = board && board.querySelector('.bstage');
+    if (!stage) return;
+    const W = board.clientWidth; const H = board.clientHeight;
+    if (!W || !H) return;
+    const k = Math.min(1, H / (W * DESIGN_H));
+    stage.style.width = `${W / k}px`;
+    stage.style.height = `${H / k}px`;
+    stage.style.transform = k < 1 ? `scale(${k})` : 'none';
+  }
+  window.addEventListener('resize', fitBoard);
+  window.addEventListener('orientationchange', () => setTimeout(fitBoard, 200));
 
   /* ------------------------------------------- Seiten-Schubladen */
 
