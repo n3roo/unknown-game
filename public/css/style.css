@@ -1055,6 +1055,9 @@ body.drop-ready .table-surface { box-shadow: 0 0 0 1.2cqw rgba(110,230,140,.8), 
 .av-weiss .fb { animation-name: av-bob; animation-duration: 3s; }
 .fig .fb { animation-delay: var(--d, 0s); animation-timing-function: ease-in-out; }
 
-/* Wer am Zug ist: etwas lebhafter, aber weiterhin weich */
-.s3.turn .fig .fb { animation-name: av-bob, av-sway !important; animation-duration: 1.5s, 3s !important; }
+/* Im Spiel: deutlich ruhiger (nur leises Atmen), Spieler am Zug wippt leicht */
+@keyframes av-calm { 0%,100% { scale: 1 1; translate: 0 0; } 50% { scale: 1.005 1.014; translate: 0 -.8%; } }
+@keyframes av-turn { 0%,100% { scale: 1 1; translate: 0 0; } 50% { scale: 1.008 1.02; translate: 0 -2%; } }
+.board .fig .fb { animation-name: av-calm !important; animation-duration: 5s !important; }
+.board .s3.turn .fig .fb { animation-name: av-turn !important; animation-duration: 2.5s !important; }
 @media (prefers-reduced-motion: reduce) { .fig .fb { animation: none !important; } }
