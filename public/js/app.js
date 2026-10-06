@@ -132,7 +132,7 @@
       return `<img class="bit ${esc(b.kind || '')}" src="${esc(b.src)}" alt="" draggable="false" style="--dir:${i % 2 ? 'reverse' : 'normal'};left:${b.x}%;top:${b.y}%;width:${b.w}%;height:${b.h}%;--ax:${ax}cqmin;--ay:${ay}cqmin;--ar:${ar}deg;--bt:${dur}s;--bd:-${(now + i * 1.7).toFixed(2)}s">`;
     }).join('');
   }
-  const glowHTML = (a) => (a.glow ? `<i class="orb" style="left:${a.glow.x}%;top:${a.glow.y}%;width:${a.glow.s}%"></i>` : '');
+  const glowHTML = (a) => [].concat(a.glow || []).map((g, i) => `<i class="orb" style="left:${g.x}%;top:${g.y}%;width:${g.s}%;animation-delay:-${(((Date.now() / 1000) % 60) + i * 1.2).toFixed(2)}s"></i>`).join('');
   function eyesHTML(a) {
     const box = (e) => `left:${e.x}%;top:${e.y}%;width:${e.w}%;height:${e.h}%`;
     let h = '';
