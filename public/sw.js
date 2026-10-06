@@ -1,7 +1,7 @@
 'use strict';
 /* UNKNOWN – Service Worker: App-Hülle und Bilder offline zwischenspeichern.
    Spielstand läuft ausschließlich über WebSocket und wird nie gecacht. */
-const VERSION = 'unknown-v40';
+const VERSION = 'unknown-v42';
 const SHELL = ['/', '/css/style.css', '/js/app.js', '/data/sets.json', '/data/avatars.json', '/manifest.webmanifest', '/assets/logo.png'];
 
 self.addEventListener('install', (e) => {
