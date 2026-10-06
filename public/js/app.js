@@ -320,7 +320,6 @@
     const av = avatarDef(S.profile.avatar);
     return `${figHTML(S.profile.avatar, 'hero-fig', S.me && S.me.hat)}
       <button class="av-arrow l" data-act="avatarstep" data-dir="-1" aria-label="Voriger Avatar">‹</button><button class="av-arrow r" data-act="avatarstep" data-dir="1" aria-label="Nächster Avatar">›</button>
-      <span class="av-name">${esc(av.name)}</span>
       <button class="dress" data-act="wardrobe">🎩 Umziehen</button>`;
   }
   const todayReady = () => {

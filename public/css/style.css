@@ -711,8 +711,8 @@ body.night {
 }
 body.night .logo-img { filter: drop-shadow(0 4px 12px rgba(0,0,0,.7)) drop-shadow(0 0 14px rgba(255,255,255,.18)); }
 .home-top { display: grid; grid-template-columns: 1fr 1fr; align-items: center; gap: 4px; }
-.home-top .hero { height: 190px; margin: 0; }
-.home-top .hero .hero-fig { width: 190px; height: 190px; }
+.home-top .hero { height: 190px; margin: -6px 0 0; place-items: end center; }
+.home-top .hero .hero-fig { width: 168px; height: 168px; }
 .home-top .hero::before { background: radial-gradient(ellipse, rgba(120,150,255,.35), transparent 70%); }
 .profile { display: grid; gap: 8px; padding-right: 2px; }
 .profile input[type=text] { background: rgba(10,12,36,.7); border-color: #3a4180; }
