@@ -387,20 +387,21 @@
         </div>
       </div>
       <button class="tile-big ranked" data-act="ranked"><span class="tb-txt"><b>Ranked</b><small>${lg ? `${lg.icon} ${lg.name} · ${me.rating} Punkte` : 'Steige in der Rangliste auf'}</small></span><i>›</i></button>
-      <button class="tile-big play" data-act="create"><span class="tb-txt"><b>Lobby erstellen</b><small>Spiel mit Freunden · 2–4 Spieler</small></span><i>›</i></button>
-      <div class="tile-big join">
-        <span class="tb-txt"><b>Beitreten</b><small>Code von deinen Freunden</small></span>
-        <input id="in-code" class="code" type="text" maxlength="4" placeholder="CODE" autocapitalize="characters" autocomplete="off" aria-label="Lobby-Code" value="${esc(prefill)}">
-        <button class="btn go" data-act="join" aria-label="Beitreten">Los</button>
+      <div class="home-row">
+        <button class="tile-big play hr" data-act="create"><span class="tb-txt"><b>Lobby erstellen</b><small>Mit Freunden · 2–4</small></span></button>
+        <div class="tile-big join hr">
+          <span class="tb-txt"><b>Beitreten</b></span>
+          <div class="hr-in"><input id="in-code" class="code" type="text" maxlength="4" placeholder="CODE" autocapitalize="characters" autocomplete="off" aria-label="Lobby-Code" value="${esc(prefill)}"><button class="btn go" data-act="join" aria-label="Beitreten">Los</button></div>
+        </div>
       </div>
-      <button class="tile-big play" data-act="botgame"><span class="tb-txt"><b>Gegen Bots üben</b><small>Sofort spielen · ohne Rangpunkte</small></span><i>›</i></button>
-      <div class="tiles">
-        <button class="tile" data-act="shop"><b>Shop</b><span>Hüte kaufen</span><em>🛒</em></button>
-        <button class="tile" data-act="leaderboard"><b>Rangliste</b><span>Weltweit &amp; Land</span><em>🏆</em></button>
-        <button class="tile" data-act="collection"><b>Deine Karten</b><span>${setDef().name} · 49</span><em>🃏</em></button>
-        <button class="tile" data-act="rules"><b>Spielregeln</b><span>Kurz erklärt</span><em>📜</em></button>
-      </div>
+      <button class="bots-btn" data-act="botgame">Gegen Bots üben · ohne Rangpunkte</button>
       <p class="legal"><a href="/datenschutz.html">Datenschutz</a> · <a href="/impressum.html">Impressum</a></p>
+      <nav class="tabbar" aria-label="Hauptmenü">
+        <button data-act="shop"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2l2.2 11h10.6L20 7H6.2"/><circle cx="9" cy="19.5" r="1.3"/><circle cx="17" cy="19.5" r="1.3"/></svg>Shop</button>
+        <button data-act="leaderboard"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4h10v5a5 5 0 01-10 0zM7 6H4v2a3 3 0 003 3M17 6h3v2a3 3 0 01-3 3M12 14v4M8 20h8"/></svg>Rangliste</button>
+        <button data-act="collection"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="11" height="15" rx="2" transform="rotate(-8 9.5 12.5)"/><rect x="9" y="4" width="11" height="15" rx="2" transform="rotate(8 14.5 11.5)"/></svg>Karten</button>
+        <button data-act="rules"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 114 2c-.9.6-1.5 1.1-1.5 2.2M12 17.2v.1"/></svg>Regeln</button>
+      </nav>
       ${me && me.daily ? `<button class="today-tab ${todayReady() ? 'ready' : ''}" data-act="today" aria-label="Heute: Tagesbelohnung und Aufgaben"><i>🎁</i><b>Heute</b>${todayReady() ? `<em class="dotbadge">${todayReady()}</em>` : ''}</button>` : ''}
       ${S.open ? '' : '<p class="hint center" id="conn-hint">Verbindung wird aufgebaut …</p>'}`;
   }
