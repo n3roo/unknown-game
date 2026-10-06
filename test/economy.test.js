@@ -83,7 +83,7 @@ test('Ranked: Rating und Gold, Liga-Aufstieg bringt Belohnung und Hut einmalig',
 
 test('Hüte kaufen und anziehen', () => {
   const p = mk('a');
-  assert.match(E.buyHat(p, 'krone').error, /fehlen/);
+  assert.match(E.buyHat(p, 'zauberer').error, /fehlen/);
   assert.ok(E.buyHat(p, 'basecap').ok);
   assert.equal(p.gold, E.START_GOLD - 100);
   assert.match(E.buyHat(p, 'basecap').error, /schon/);
