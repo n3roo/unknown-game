@@ -978,3 +978,24 @@ body.drop-ready .table-surface { box-shadow: 0 0 0 1.2cqw rgba(110,230,140,.8), 
 
 .lb-add { width: 34px; height: 34px; border-radius: 10px; border: 1px solid #5a4630; background: rgba(232,169,74,.18); color: #ffd98a; font: 800 18px/1 system-ui; cursor: pointer; margin-left: 8px; flex: none; }
 .lb-f { margin-left: 8px; font-size: 18px; flex: none; }
+
+/* Avatar-Wechsler am Hero und Heute-Reiter am Rand */
+.hero { position: relative; touch-action: pan-y; }
+.av-switch { display: flex; align-items: center; justify-content: center; gap: 6px; margin: 2px auto 0; }
+.av-switch span { min-width: 78px; text-align: center; font: 800 13px system-ui; color: #f6e7c4; }
+.av-switch button { width: 32px; height: 32px; border-radius: 50%; border: 1px solid #5a4630; background: rgba(12,8,22,.7); color: #ffd98a; font: 800 20px/1 system-ui; cursor: pointer; padding: 0 0 2px; }
+.av-switch button:active { transform: scale(.9); }
+.today-tab { position: fixed; right: 0; top: 46%; z-index: 40; display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 8px 7px 7px 9px; border: 1px solid #e8a94a; border-right: 0; border-radius: 14px 0 0 14px; background: linear-gradient(#4a3418, #2c1e0e); color: #ffd98a; cursor: pointer; box-shadow: 0 6px 16px rgba(0,0,0,.5); }
+.today-tab i { font-style: normal; font-size: 22px; line-height: 1; } .today-tab b { font: 800 10px system-ui; letter-spacing: .3px; }
+.today-tab .dotbadge { top: -6px; right: auto; left: -6px; }
+.today-tab.ready { animation: tabnudge 2.4s ease-in-out infinite; }
+@keyframes tabnudge { 0%,80%,100% { transform: translateX(0); } 88% { transform: translateX(-5px); } 94% { transform: translateX(0); } }
+@media (prefers-reduced-motion: reduce) { .today-tab.ready { animation: none; } }
+
+.av-switch { display: none; }
+.av-arrow { position: absolute; top: 44%; z-index: 4; width: 34px; height: 34px; border-radius: 50%; border: 1px solid #5a4630; background: rgba(12,8,22,.72); color: #ffd98a; font: 800 22px/1 system-ui; cursor: pointer; padding: 0 0 3px; }
+.av-arrow.l { left: -2px; } .av-arrow.r { right: -2px; }
+.av-arrow:active { transform: scale(.9); }
+.av-name { position: absolute; top: 0; left: 50%; transform: translateX(-50%); font: 800 12px system-ui; color: #f6e7c4; text-shadow: 0 1px 4px #000; background: rgba(12,8,22,.55); padding: 2px 9px; border-radius: 999px; z-index: 3; white-space: nowrap; }
+.today-tab { top: 74px; padding: 6px 6px 5px 8px; }
+.today-tab i { font-size: 20px; }

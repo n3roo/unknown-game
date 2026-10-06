@@ -316,6 +316,18 @@
       </section>`;
   }
 
+  function heroHTML() {
+    const av = avatarDef(S.profile.avatar);
+    return `${figHTML(S.profile.avatar, 'hero-fig', S.me && S.me.hat)}
+      <button class="av-arrow l" data-act="avatarstep" data-dir="-1" aria-label="Voriger Avatar">‹</button><button class="av-arrow r" data-act="avatarstep" data-dir="1" aria-label="Nächster Avatar">›</button>
+      <span class="av-name">${esc(av.name)}</span>
+      <button class="dress" data-act="wardrobe">🎩 Umziehen</button>`;
+  }
+  const todayReady = () => {
+    const me = S.me; if (!me || !me.daily) return 0;
+    return (me.daily.claimedToday ? 0 : 1) + me.missions.filter((m) => m.progress >= m.goal && !m.claimed).length;
+  };
+
   function renderHome() {
     const prefill = (new URLSearchParams(location.search).get('code') || '').toUpperCase().slice(0, 4);
     if (!S.data.avatars.some((a) => a.id === S.profile.avatar)) S.profile.avatar = S.data.avatars[0].id;
@@ -331,7 +343,7 @@
       </div>
       <h1 class="logo-h">${LOGO()}</h1>
       <div class="home-top">
-        <div class="hero" id="hero">${figHTML(S.profile.avatar, 'hero-fig', me && me.hat)}<button class="dress" data-act="wardrobe">🎩 Umziehen</button></div>
+        <div class="hero" id="hero">${heroHTML()}</div>
         <div class="profile">
           <label class="field"><span>Dein Name</span>
             <input id="in-name" type="text" maxlength="16" autocomplete="nickname" placeholder="z. B. Mia" value="${esc(S.profile.name)}"></label>
@@ -339,7 +351,6 @@
         </div>
       </div>
       <button class="tile-big ranked" data-act="ranked"><span class="tb-txt"><b>Ranked</b><small>${lg ? `${lg.icon} ${lg.name} · ${me.rating} Punkte` : 'Steige in der Rangliste auf'}</small></span><i>›</i></button>
-      ${todayHTML()}
       <button class="tile-big play" data-act="botgame"><span class="tb-txt"><b>Gegen Bots üben</b><small>Sofort spielen · ohne Rangpunkte</small></span><i>›</i></button>
       <button class="tile-big play" data-act="create"><span class="tb-txt"><b>Lobby erstellen</b><small>Spiel mit Freunden · 2–4 Spieler</small></span><i>›</i></button>
       <div class="tile-big join">
@@ -347,10 +358,6 @@
         <input id="in-code" class="code" type="text" maxlength="4" placeholder="CODE" autocapitalize="characters" autocomplete="off" aria-label="Lobby-Code" value="${esc(prefill)}">
         <button class="btn go" data-act="join" aria-label="Beitreten">Los</button>
       </div>
-      <section class="panel stack">
-        <div class="sec-h"><b>Dein Avatar</b><span class="muted">${esc(av.name)}</span></div>
-        ${avatarPicker(S.profile.avatar)}
-      </section>
       <div class="tiles">
         <button class="tile" data-act="shop"><b>Shop</b><span>Hüte kaufen</span><em>🛒</em></button>
         <button class="tile" data-act="leaderboard"><b>Rangliste</b><span>Weltweit &amp; Land</span><em>🏆</em></button>
@@ -358,6 +365,7 @@
         <button class="tile" data-act="rules"><b>Spielregeln</b><span>Kurz erklärt</span><em>📜</em></button>
       </div>
       <p class="legal"><a href="/datenschutz.html">Datenschutz</a> · <a href="/impressum.html">Impressum</a></p>
+      ${me && me.daily ? `<button class="today-tab ${todayReady() ? 'ready' : ''}" data-act="today" aria-label="Heute: Tagesbelohnung und Aufgaben"><i>🎁</i><b>Heute</b>${todayReady() ? `<em class="dotbadge">${todayReady()}</em>` : ''}</button>` : ''}
       ${S.open ? '' : '<p class="hint center" id="conn-hint">Verbindung wird aufgebaut …</p>'}`;
   }
 
@@ -764,6 +772,7 @@
       else if (m.type === 'leaderboard') html = leaderboardHTML();
       else if (m.type === 'account') html = accountHTML();
       else if (m.type === 'friends') html = friendsHTML();
+      else if (m.type === 'today') html = `${todayHTML()}<button class="btn" data-act="close">Schließen</button>`;
       else if (m.type === 'guess') html = guessHTML();
       else if (m.type === 'leave') {
         html = `<h2>Spiel verlassen?</h2><p>${st && st.phase === 'lobby' ? 'Du verlässt die Lobby.' : S.ranked ? 'In einer Ranked-Partie zählt das als Niederlage: −20 Punkte.' : 'Du scheidest aus der laufenden Partie aus.'}</p>
@@ -1065,13 +1074,19 @@
   }
 
   const actions = {
+    today() { S.ui.modal = { type: 'today' }; renderModals(); },
+    avatarstep(t) {
+      const list = S.data.avatars; const i = list.findIndex((a) => a.id === S.profile.avatar);
+      actions.avatar({ dataset: { id: list[(i + Number(t.dataset.dir) + list.length) % list.length].id } });
+      SFX.select();
+    },
     avatar(t) {
       const id = t.dataset.id;
       if (S.st) { send({ type: 'avatar', avatar: id }); return; }
       S.profile.avatar = id; saveProfile();
       document.querySelectorAll('.avatar-pick').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.id === id)));
       const hero = document.getElementById('hero');
-      if (hero) hero.innerHTML = figHTML(id, 'hero-fig', S.me && S.me.hat) + '<button class="dress" data-act="wardrobe">🎩 Umziehen</button>';
+      if (hero) hero.innerHTML = heroHTML();
       if (S.me) { S.me.avatar = id; send({ type: 'setprofile', avatar: id }); }
     },
     create() {
@@ -1253,6 +1268,12 @@
     if (fn) fn(t);
   });
 
+  let heroSwipe = null;
+  document.addEventListener('pointerdown', (e) => { const h = e.target.closest && e.target.closest('#hero'); if (h && !e.target.closest('button')) heroSwipe = { x: e.clientX, y: e.clientY }; });
+  document.addEventListener('pointerup', (e) => {
+    if (!heroSwipe) return; const d = { x: e.clientX - heroSwipe.x, y: e.clientY - heroSwipe.y }; heroSwipe = null;
+    if (Math.abs(d.x) > 40 && Math.abs(d.x) > Math.abs(d.y) * 1.5) actions.avatarstep({ dataset: { dir: d.x < 0 ? 1 : -1 } });
+  });
   $modal.addEventListener('focusout', () => {
     if (!S.modalDirty) return;
     setTimeout(() => { const a = document.activeElement; if (!(a && a.tagName === 'INPUT' && $modal.contains(a))) { S.modalDirty = false; renderModals(); } }, 200);
