@@ -76,7 +76,7 @@ img { -webkit-user-drag: none; user-select: none; }
 .panel h2 { margin: 0 0 10px; font-size: 17px; }
 .field { display: block; margin: 0 0 10px; }
 .field > span { display: block; font-size: 13px; color: var(--muted); margin-bottom: 4px; }
-input[type=text] {
+input[type=text], input[type=email] {
   width: 100%;
   padding: 12px 14px;
   border-radius: 10px;
@@ -85,7 +85,7 @@ input[type=text] {
   color: var(--text);
   font-size: 17px;
 }
-input[type=text]::placeholder { color: #8a7960; }
+input[type=text]::placeholder, input[type=email]::placeholder { color: #8a7960; }
 input.code { text-transform: uppercase; letter-spacing: 6px; text-align: center; font-weight: 700; }
 
 .btn {
@@ -1192,3 +1192,13 @@ body.drop-ready .table-surface { box-shadow: 0 0 0 1.2cqw rgba(110,230,140,.8), 
 /* Einheitliche Kachel-Schrift (Lobby, Ranked, Beitreten) */
 .tile-big.join b { font-size: 22px; color: #fff; -webkit-text-stroke: 1.4px #1d0f4d; paint-order: stroke fill; text-shadow: 0 3px 0 #1d0f4d; text-transform: uppercase; }
 .tile-big.join small { font-size: 12.5px; }
+.auth-box { margin: 10px 0; padding: 10px; border-radius: 12px; background: rgba(0,0,0,.28); border: 1px solid var(--wood-line, #5a4630); }
+.auth-box input { margin: 4px 0; }
+
+/* Dezentes Belohnungs-Video */
+.ad-btn { display: flex; align-items: center; gap: 8px; width: 100%; margin: 10px 0 0; padding: 8px 12px; border-radius: 12px; border: 1px dashed #8a6d3b; background: rgba(0,0,0,.25); color: #f0dcc0; font: 700 13px system-ui, sans-serif; cursor: pointer; }
+.ad-btn b { margin-left: auto; color: #ffd45a; }
+.ad-btn small { opacity: .7; font-weight: 600; }
+.ad-btn:disabled { opacity: .45; cursor: default; }
+.ad-demo { position: fixed; inset: 0; z-index: 99; display: grid; place-items: center; background: rgba(8,5,3,.92); color: #fff; text-align: center; font: 700 18px system-ui, sans-serif; }
+.ad-demo p { font-size: 28px; margin: 8px 0 14px; }

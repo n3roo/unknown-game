@@ -150,3 +150,20 @@ test('Premium-Avatare: kaufen, Besitz, Auswahl', () => {
   E.fixAvatar(p);
   assert.equal(p.avatar, 'weiss', 'entfernte Figur fällt auf Standard zurück');
 });
+
+test('Belohnungs-Video: Ticket, Mindestdauer, Tageslimit', () => {
+  const p = E.newProfile('x'.repeat(24), 0);
+  const g0 = p.gold;
+  const t0 = 1_000_000;
+  const { ticket } = E.startAd(p, t0);
+  assert.match(E.claimAd(p, ticket, t0 + 1000).error, /Ende/);
+  assert.match(E.claimAd(p, 'falsch', t0 + 6000).error, /gültig/);
+  const t1 = E.startAd(p, t0).ticket;
+  const ok = E.claimAd(p, t1, t0 + 6000);
+  assert.strictEqual(ok.gold, E.ADS.gold);
+  assert.strictEqual(p.gold, g0 + E.ADS.gold);
+  assert.ok(E.claimAd(p, t1, t0 + 7000).error, 'Ticket nur einmal');
+  for (let i = 1; i < E.ADS.perDay; i++) { const t = E.startAd(p, t0).ticket; assert.ok(E.claimAd(p, t, t0 + 6000).gold); }
+  assert.match(E.startAd(p, t0).error, /heute/);
+  assert.ok(E.startAd(p, t0 + 86_400_000 * 2).ticket, 'neuer Tag');
+});

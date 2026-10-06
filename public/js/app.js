@@ -283,7 +283,7 @@
           const q = new URLSearchParams(location.search);
           if (q.get('code') && q.get('auto')) { const code = q.get('code').toUpperCase(); history.replaceState(null, '', location.pathname); setTimeout(() => send({ type: 'join', code, name: S.profile.name, avatar: S.profile.avatar }), 300); }
         }
-        S.me = m.profile; S.storeKind = m.store; if (m.regions) S.regions = m.regions; if (m.leagues) S.leagues = m.leagues; S.rankedBots = !!m.rankedBots;
+        S.me = m.profile; S.storeKind = m.store; if (m.regions) S.regions = m.regions; if (m.leagues) S.leagues = m.leagues; S.rankedBots = !!m.rankedBots; if (m.auth) S.auth = m.auth; S.ads = m.ads || null;
         if (!S.profile.name) { S.profile.name = S.me.name; saveProfile(); }
         if (S.me.avatar && !S.st) { S.profile.avatar = S.me.avatar; saveProfile(); }
         if (!S.st || S.ui.modal) { if (!S.st) render(); else renderModals(); }
@@ -301,6 +301,9 @@
         SFX.coin(); toast(`+${m.gold} Gold${m.kind === 'daily' ? ` · Serie ${m.streak}` : ''}`);
         break;
       case 'toast': toast(m.message); break;
+      case 'adticket': runAd(m.ticket); break;
+      case 'authcode': S.authEmail = m.email; toast('Code gesendet ✉️ Schau auch im Spam-Ordner nach.'); if (S.ui.modal && S.ui.modal.type === 'account') renderModals(); break;
+      case 'loggedout': LS.del('unknown.secret'); LS.del('unknown.session'); LS.del('unknown.profile'); location.reload(); break;
       case 'friends': {
         const first = !S.friends;
         S.friends = m;
@@ -810,6 +813,7 @@
     $modal.innerHTML = `<div class="modal ${enter ? 'enter' : ''}" data-closable="${closable}" role="dialog" aria-modal="true"><div class="sheet">${html}</div></div>`;
     const sheet = $modal.querySelector('.sheet');
     if (sheet) sheet.scrollTop = keepScroll;
+    if (ui.modal && ui.modal.type === 'account') mountGoogle();
   }
 
   function collectionHTML() {
@@ -983,6 +987,7 @@
     return `<div class="wd-top"><h2 style="margin:0">Shop</h2><span class="gold-pill">🪙 ${me.gold}</span></div>
       <div class="wd-stage">${figHTML(avSel ? avSel.id : me.avatar, 'wd-fig', prev || me.hat)}</div>
       ${action}
+      ${adButtonHTML()}
       <h3 style="margin:12px 0 6px">Avatare <small class="muted">· Premium</small></h3><div class="hat-grid av-shop">${S.data.avatars.filter((a) => a.price).map((a) => `<button class="hat-item ${prevAv === a.id ? 'sel' : ''} ${avOwned(a) ? 'own' : ''}" data-act="prevav" data-id="${a.id}" aria-label="${esc(a.name)}"><span class="hi-av">${avatarHTML(a.id, 58)}</span><b>${esc(a.name)}</b><small>${avOwned(a) ? '✓ Im Besitz' : `${a.price} 🪙`}</small></button>`).join('')}</div>
       <h3 style="margin:12px 0 6px">Hüte</h3><div class="hat-grid">${S.hatsDef.filter((h) => !h.league && !h.special).map(item).join('')}</div>
       <h3 style="margin:12px 0 6px">Liga-Hüte</h3><div class="hat-grid">${S.hatsDef.filter((h) => h.league).map(item).join('')}</div>
@@ -1071,6 +1076,7 @@
       ${S.storeKind === 'memory' ? '<p class="hint warn">Hinweis: Der Server speichert gerade nur vorübergehend. Nach einem Neustart kann der Spielstand weg sein.</p>' : ''}
       <div class="row" style="margin:6px 0"><button class="btn small ${SFX.on ? '' : 'ghost'}" data-act="togglesound">${SFX.on ? '🔊 Sound an' : '🔇 Sound aus'}</button><button class="btn small ${SFX.vib ? '' : 'ghost'}" data-act="togglevib">${SFX.vib ? '📳 Vibration an' : 'Vibration aus'}</button></div>
       ${pushSupported() ? `<div class="row" style="margin:6px 0">${pushButton()}</div><p class="hint" style="margin:0 0 6px">Melde dich bei Freundschaftsanfragen und Lobby-Einladungen, auch wenn die App zu ist.</p>` : ''}
+      ${authHTML()}
       <p style="margin:8px 0 4px"><b>Wiederherstellungs-Code</b></p>
       <p class="hint" style="margin:0 0 6px">Damit holst du dein Konto (Gold, Hüte, Rang) auf einem anderen Gerät zurück. Geheim halten!</p>
       <div class="secret" id="secret-box">${grouped}</div>
@@ -1082,6 +1088,66 @@
       <input id="in-dev" type="password" placeholder="Nur für den Entwickler" autocomplete="off" style="width:100%">
       <button class="btn ghost" data-act="devcode">Freischalten</button>
       <button class="btn" data-act="close">Schließen</button>`;
+  }
+
+
+  /* ------------------------------------------------- Anmeldung (Konto) */
+
+  function authHTML() {
+    const me = S.me; const a = S.auth || {};
+    if (me && me.account) {
+      return `<div class="auth-box"><p style="margin:0 0 4px"><b>Angemeldet</b> · ${esc(me.account.email)} <small class="muted">(${me.account.provider === 'google' ? 'Google' : 'E-Mail'})</small></p>
+        <p class="hint" style="margin:0 0 6px">Dein Fortschritt ist gesichert und auf jedem Gerät verfügbar.</p>
+        <div class="row"><button class="btn small ghost" data-act="authlogout">Abmelden</button><button class="btn small ghost" data-act="authdeletestart">Konto löschen</button></div>
+        ${S.ui.delAsk ? '<p class="hint warn" style="margin:8px 0 4px">Das löscht Konto und Spielstand endgültig. Tippe „löschen“ zur Bestätigung:</p><input id="in-del" type="text" autocomplete="off" style="width:100%"><button class="btn no" data-act="authdelete">Endgültig löschen</button>' : ''}</div>`;
+    }
+    if (!a.email && !a.google) return '';
+    return `<div class="auth-box"><p style="margin:0 0 4px"><b>Konto sichern</b></p>
+      <p class="hint" style="margin:0 0 6px">Melde dich an, damit Gold, Hüte und Rang nie verloren gehen und auf jedem Gerät da sind.</p>
+      ${a.google ? '<div id="g-btn" style="min-height:44px;margin:4px 0"></div>' : ''}
+      ${a.email ? (S.authEmail
+        ? `<p class="hint" style="margin:6px 0 4px">Code an <b>${esc(S.authEmail)}</b> gesendet.</p><input id="in-code" type="text" inputmode="numeric" maxlength="6" placeholder="6-stelliger Code" autocomplete="one-time-code" style="width:100%"><div class="row"><button class="btn small" data-act="authverify">Bestätigen</button><button class="btn small ghost" data-act="authback">Andere E-Mail</button></div>`
+        : `<input id="in-mail" type="email" placeholder="E-Mail-Adresse" autocomplete="email" style="width:100%"><button class="btn ghost" data-act="authemail">Code per E-Mail senden</button>`) : ''}
+      <p class="hint" style="margin:6px 0 0">Beim Anmelden mit einem bestehenden Konto ersetzt dessen Spielstand den aktuellen dieses Geräts.</p></div>`;
+  }
+
+  let gisLoading = null;
+  function loadGoogle() {
+    if (window.google && window.google.accounts) return Promise.resolve();
+    if (!gisLoading) gisLoading = new Promise((res, rej) => { const el = document.createElement('script'); el.src = 'https://accounts.google.com/gsi/client'; el.async = true; el.onload = res; el.onerror = () => { gisLoading = null; rej(new Error('gis')); }; document.head.appendChild(el); });
+    return gisLoading;
+  }
+  function mountGoogle() {
+    const box = document.getElementById('g-btn');
+    if (!box || !(S.auth && S.auth.google) || box.dataset.ready) return;
+    loadGoogle().then(() => {
+      const el = document.getElementById('g-btn'); if (!el || el.dataset.ready) return; el.dataset.ready = '1';
+      window.google.accounts.id.initialize({ client_id: S.auth.google, callback: (r) => send({ type: 'authgoogle', credential: r.credential }), ux_mode: 'popup' });
+      window.google.accounts.id.renderButton(el, { theme: 'filled_black', size: 'large', shape: 'pill', text: 'continue_with', locale: 'de', width: Math.min(300, el.clientWidth || 300) });
+    }).catch(() => { box.textContent = ''; });
+  }
+
+
+  /* ------------------------------------------------- Belohnungs-Video (dezent) */
+
+  function adButtonHTML() {
+    const me = S.me; const a = S.ads;
+    if (!a || !me) return '';
+    const left = me.adsLeft ?? 0;
+    return `<button class="ad-btn" data-act="watchad" ${left ? '' : 'disabled'}><span>▶ Kurzes Video</span><b>+${a.gold} 🪙</b><small>${left ? `heute noch ${left}×` : 'für heute fertig'}</small></button>`;
+  }
+  function runAd(ticket) {
+    const done = () => send({ type: 'adclaim', ticket });
+    const native = window.UnknownAds && typeof window.UnknownAds.showRewarded === 'function';
+    if (native) { Promise.resolve(window.UnknownAds.showRewarded()).then((ok) => { if (ok) done(); else toast('Video nicht abgeschlossen.', true); }).catch(() => toast('Video gerade nicht verfügbar.', true)); return; }
+    if (!S.ads || S.ads.mode !== 'demo') { toast('Videos sind gerade nicht verfügbar.', true); return; }
+    // Demo-Werbung: 5-Sekunden-Countdown (nur zum Testen, bis ein Werbenetzwerk angebunden ist)
+    const el = document.createElement('div'); el.className = 'ad-demo';
+    let n = 5;
+    const paint = () => { el.innerHTML = `<div><b>Werbung (Demo)</b><p>Noch ${n} s …</p><button class="btn small ghost" data-adcancel>Abbrechen</button></div>`; };
+    paint(); document.body.appendChild(el);
+    const t = setInterval(() => { n -= 1; if (n <= 0) { clearInterval(t); el.remove(); done(); } else paint(); }, 1000);
+    el.addEventListener('click', (e) => { if (e.target.closest('[data-adcancel]')) { clearInterval(t); el.remove(); } });
   }
 
   /* ------------------------------------------------- Aktionen */
@@ -1241,6 +1307,13 @@
       location.reload();
     },
     hideend() { S.ui.hideEnd = true; renderModals(); },
+    watchad() { send({ type: 'adstart' }); },
+    authemail() { const v = ((document.getElementById('in-mail') || {}).value || '').trim(); if (!v) return toast('Bitte E-Mail eingeben.', true); document.activeElement && document.activeElement.blur(); send({ type: 'authemail', email: v }); },
+    authverify() { const v = ((document.getElementById('in-code') || {}).value || '').trim(); if (!v) return toast('Bitte den Code eingeben.', true); document.activeElement && document.activeElement.blur(); send({ type: 'authverify', email: S.authEmail, code: v }); },
+    authback() { S.authEmail = null; renderModals(); },
+    authlogout() { send({ type: 'authlogout' }); },
+    authdeletestart() { S.ui.delAsk = true; renderModals(); },
+    authdelete() { send({ type: 'authdelete', confirm: (document.getElementById('in-del') || {}).value || '' }); },
   };
 
   /* ---- Karten per Drag & Drop auf den Tisch ziehen ---- */

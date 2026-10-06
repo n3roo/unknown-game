@@ -18,6 +18,7 @@ const FR = require('./lib/friends');
 const { Pusher } = require('./lib/push');
 const { Queue } = require('./lib/queue');
 const { createStore } = require('./lib/store');
+const { Auth } = require('./lib/auth');
 
 const PORT = Number(process.env.PORT) || 10000;
 const PUBLIC_DIR = path.join(__dirname, 'public');
@@ -28,6 +29,9 @@ const SETS = require('./public/data/sets.json').sets.map((s) => s.id);
 
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const store = createStore();
+const auth = new Auth(store);
+// Belohnungs-Werbung: off (Standard, Button versteckt) | demo (Test-Countdown) | native (App-Hülle liefert die Werbung)
+const ADS_MODE = ['demo', 'native'].includes(String(process.env.ADS_MODE || '').toLowerCase()) ? String(process.env.ADS_MODE).toLowerCase() : 'off';
 const profiles = new Map(); // geladene Profile (id -> Profil), Quelle der Wahrheit im Betrieb
 const queue = new Queue();
 const queueSockets = new Map(); // Profil-ID -> ws
@@ -185,9 +189,11 @@ function broadcast(room) {
 
 /* ------------------------------------------------------------ Profile */
 
-async function loadProfile(secret) {
-  const id = E.profileIdFor(secret);
+async function loadProfile(secret, deviceId = E.profileIdFor(secret)) {
+  let id = deviceId;
+  try { id = await auth.resolve(deviceId); } catch { /* egal */ }
   let p = profiles.get(id);
+  if (!p && id !== deviceId && !(await store.get(id))) { id = deviceId; await auth.unlink(deviceId).catch(() => {}); p = profiles.get(id); }
   if (!p) {
     p = (await store.get(id)) || E.newProfile(id);
     // Beim Laden gleichzeitiger Verbindungen nicht doppelt anlegen
@@ -202,7 +208,7 @@ async function loadProfile(secret) {
 const saveProfile = (p) => store.put(p).catch((err) => console.error('Profil speichern fehlgeschlagen:', err.message));
 
 function sendProfile(ws) {
-  if (ws.profile) send(ws, { type: 'profile', profile: E.selfView(ws.profile), store: store.kind, regions: E.REGIONS, leagues: LEAGUES, rankedBots: RANKED_BOTS });
+  if (ws.profile) send(ws, { type: 'profile', profile: E.selfView(ws.profile), auth: auth.config(), ads: ADS_MODE === 'off' ? null : { mode: ADS_MODE, perDay: E.ADS.perDay, gold: E.ADS.gold }, store: store.kind, regions: E.REGIONS, leagues: LEAGUES, rankedBots: RANKED_BOTS });
 }
 
 /* ------------------------------------------------------------ Freunde */
@@ -456,6 +462,37 @@ function botTick() {
 const botTimer = setInterval(botTick, 600);
 botTimer.unref();
 
+
+/** Nach erfolgreicher Anmeldung: Konto anlegen oder auf das bestehende Konto-Profil wechseln. */
+async function finishLogin(ws, r) {
+  if (ws.ctx || queue.has(ws.profile.id)) return send(ws, { type: 'error', message: 'Bitte erst die Partie oder Suche beenden.' });
+  const existing = await auth.accountProfile(r.email);
+  if (!existing) {
+    await auth.bind(r.email, ws.profile.id);
+    ws.profile.account = { email: r.email, provider: r.provider };
+    saveProfile(ws.profile);
+    send(ws, { type: 'toast', message: 'Konto angelegt ✅ Dein Fortschritt ist jetzt gesichert.' });
+  } else {
+    let target = profiles.get(existing) || (await store.get(existing));
+    if (!target) { // Konto zeigte auf ein gelöschtes Profil: neu verbinden
+      await auth.bind(r.email, ws.profile.id);
+      ws.profile.account = { email: r.email, provider: r.provider };
+      saveProfile(ws.profile);
+    } else {
+      profiles.set(existing, target);
+      await auth.link(ws.deviceId, existing);
+      target.account = { email: r.email, provider: r.provider };
+      E.rollDaily(target); E.fixAvatar(target);
+      saveProfile(target);
+      ws.profile = target;
+      send(ws, { type: 'toast', message: 'Angemeldet ✅ Dein Konto wurde geladen.' });
+    }
+  }
+  sendProfile(ws);
+  sendFriends(ws);
+  notifyFriendsOf(ws.profile, ws);
+}
+
 /* ------------------------------------------------------- Nachrichten */
 
 const handlers = {
@@ -463,7 +500,8 @@ const handlers = {
   async hello(ws, msg) {
     const secret = String(msg.secret ?? '');
     if (!/^[0-9a-f]{32,64}$/.test(secret)) return send(ws, { type: 'error', message: 'Ungültiger Geräteschlüssel.' });
-    ws.profile = await loadProfile(secret);
+    ws.deviceId = E.profileIdFor(secret);
+    ws.profile = await loadProfile(secret, ws.deviceId);
     if (msg.init && !ws.profile.initialized) {
       // Erster Start: Name, Avatar und Land aus der Startseite übernehmen
       E.updateSettings(ws.profile, msg.init, AVATARS);
@@ -473,6 +511,47 @@ const handlers = {
     sendProfile(ws);
     sendFriends(ws);
     notifyFriendsOf(ws.profile, ws);
+  },
+
+
+  /* ------------------------------------------------ Konten */
+
+  async authemail(ws, msg) {
+    if (!ws.profile) return;
+    const r = await auth.requestCode(msg.email, ws.ip);
+    if (r.error) return send(ws, { type: 'error', message: r.error });
+    send(ws, { type: 'authcode', email: String(msg.email).trim().toLowerCase() });
+  },
+  async authverify(ws, msg) {
+    if (!ws.profile) return;
+    const r = auth.verifyCode(msg.email, msg.code);
+    if (r.error) return send(ws, { type: 'error', message: r.error });
+    await finishLogin(ws, r);
+  },
+  async authgoogle(ws, msg) {
+    if (!ws.profile) return;
+    const r = await auth.verifyGoogle(msg.credential);
+    if (r.error) return send(ws, { type: 'error', message: r.error });
+    await finishLogin(ws, r);
+  },
+  /** Abmelden: Das Gerät bekommt wieder sein eigenes Profil (der Client erzeugt dafür einen neuen Schlüssel). */
+  async authlogout(ws) {
+    if (!ws.profile || !ws.deviceId) return;
+    if (ws.ctx || queue.has(ws.profile.id)) return send(ws, { type: 'error', message: 'Nicht während einer Partie oder Suche.' });
+    await auth.unlink(ws.deviceId);
+    send(ws, { type: 'loggedout' });
+  },
+  /** Konto samt Spielstand dauerhaft löschen. */
+  async authdelete(ws, msg) {
+    const p = ws.profile;
+    if (!p || !p.account) return;
+    if (ws.ctx || queue.has(p.id)) return send(ws, { type: 'error', message: 'Nicht während einer Partie oder Suche.' });
+    if (String(msg.confirm ?? '').trim().toLowerCase() !== 'löschen') return send(ws, { type: 'error', message: 'Zum Löschen bitte „löschen“ eintippen.' });
+    await auth.unbind(p.account.email);
+    await auth.unlink(ws.deviceId);
+    profiles.delete(p.id);
+    await store.del(p.id);
+    send(ws, { type: 'loggedout', deleted: true });
   },
 
   async pushkey(ws) { send(ws, { type: 'pushkey', key: await pusher.key() }); },
@@ -625,6 +704,22 @@ const handlers = {
     saveProfile(p);
     sendProfile(ws);
     send(ws, { type: 'toast', message: 'Entwickler-Modus: alle Accessoires und Avatare freigeschaltet 👑' });
+  },
+
+  adstart(ws) {
+    if (!ws.profile) return;
+    if (ADS_MODE === 'off') return send(ws, { type: 'error', message: 'Videos sind gerade nicht verfügbar.' });
+    const r = E.startAd(ws.profile);
+    if (r.error) return send(ws, { type: 'error', message: r.error });
+    send(ws, { type: 'adticket', ticket: r.ticket });
+  },
+  adclaim(ws, msg) {
+    if (!ws.profile || ADS_MODE === 'off') return;
+    const r = E.claimAd(ws.profile, msg.ticket);
+    if (r.error) return send(ws, { type: 'error', message: r.error });
+    saveProfile(ws.profile);
+    sendProfile(ws);
+    send(ws, { type: 'claimed', kind: 'ad', gold: r.gold });
   },
 
   claimdaily(ws) {
@@ -871,7 +966,8 @@ function onClose(ws) {
 
 const wss = new WebSocketServer({ server, maxPayload: 4096 });
 
-wss.on('connection', (ws) => {
+wss.on('connection', (ws, req) => {
+  ws.ip = String((req && req.headers['x-forwarded-for']) || (req && req.socket && req.socket.remoteAddress) || '').split(',')[0].trim();
   ws.isAlive = true;
   ws.ctx = null;
   ws.on('pong', () => {
@@ -929,4 +1025,4 @@ if (require.main === module) {
   process.on('SIGTERM', () => { flushRooms().finally(() => process.exit(0)); setTimeout(() => process.exit(0), 4000).unref(); });
 }
 
-module.exports = { server, wss, rooms, store, profiles, queue, restoreRooms, flushRooms, serializeRoom };
+module.exports = { server, wss, rooms, store, auth, profiles, queue, restoreRooms, flushRooms, serializeRoom };
