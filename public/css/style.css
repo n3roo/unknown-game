@@ -1156,3 +1156,7 @@ body.drop-ready .table-surface { box-shadow: 0 0 0 1.2cqw rgba(110,230,140,.8), 
 /* Ranked-Kachel: gleiche Schrift wie Lobby erstellen / Gegen Bots */
 .tile-big.ranked b { color: #fff; -webkit-text-stroke: 1.4px #3a0a14; paint-order: stroke fill; text-shadow: 0 3px 0 #3a0a14; text-transform: uppercase; }
 .tile-big.ranked small { text-shadow: none; }
+
+/* Avatar antippen = umziehen */
+.hero .dress { display: none; }
+.hero .hero-tap { position: absolute; inset: 0 40px; z-index: 3; background: none; border: 0; padding: 0; cursor: pointer; -webkit-tap-highlight-color: transparent; }

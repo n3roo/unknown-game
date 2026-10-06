@@ -352,7 +352,7 @@
     const av = avatarDef(S.profile.avatar);
     return `${figHTML(S.profile.avatar, 'hero-fig', S.me && S.me.hat)}
       <button class="av-arrow l" data-act="avatarstep" data-dir="-1" aria-label="Voriger Avatar">‹</button><button class="av-arrow r" data-act="avatarstep" data-dir="1" aria-label="Nächster Avatar">›</button>
-      <button class="dress" data-act="wardrobe">🎩 Umziehen</button>`;
+      <button class="hero-tap" data-act="wardrobe" aria-label="Umziehen"></button>`;
   }
   const todayReady = () => {
     const me = S.me; if (!me || !me.daily) return 0;
@@ -976,7 +976,7 @@
       if (avOwned(avSel)) action = `<p class="hint center">${esc(avSel.name)} gehört dir. Wechsle oben im Menü mit den Pfeilen zu ihm.</p>`;
       else action = `<button class="btn primary" data-act="buyavatar" data-id="${avSel.id}" ${me.gold < avSel.price ? 'disabled' : ''}>${esc(avSel.name)} kaufen · ${avSel.price} 🪙</button>${me.gold < avSel.price ? `<p class="hint center">Dir fehlen ${avSel.price - me.gold} Gold. Gewinne Runden, löse Missionen und steige in der Rangliste auf.</p>` : ''}`;
     } else if (sel) {
-      if (owned(sel.id)) action = '<p class="hint center">Den Hut besitzt du schon. Zieh ihn oben im Menü an (🎩 Umziehen).</p>';
+      if (owned(sel.id)) action = '<p class="hint center">Den Hut besitzt du schon. Zieh ihn an, indem du oben im Menü auf deinen Avatar tippst.</p>';
       else if (sel.league) action = `<p class="hint center">Diesen Hut bekommst du beim Aufstieg in die ${esc(leagueDef(sel.league).name)}-Liga.</p>`;
       else action = `<button class="btn primary" data-act="buy" data-hat="${sel.id}" ${me.gold < sel.price ? 'disabled' : ''}>Kaufen · ${sel.price} 🪙</button>${me.gold < sel.price ? `<p class="hint center">Dir fehlen ${sel.price - me.gold} Gold. Gewinne Runden, um Gold zu verdienen.</p>` : ''}`;
     }
