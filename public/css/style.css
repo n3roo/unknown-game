@@ -1013,3 +1013,16 @@ body.drop-ready .table-surface { box-shadow: 0 0 0 1.2cqw rgba(110,230,140,.8), 
 .hand .slot-card.sel { transform: translateY(-12cqw) rotate(0deg) scale(1.12); }
 .hand { bottom: 3cqw; }
 .hand .slot-card { width: 19cqw; margin: 0 -0.4cqw; transform: translateY(calc(var(--i) * var(--i) * .8cqw)) rotate(calc(var(--i) * 2.8deg)); }
+
+/* Größere Handkarten, größere Tischkarten, Tisch mittig */
+.hand { bottom: 5cqw; height: 50cqw; }
+.hand .slot-card { width: 21.6cqw; margin: 0 -1.4cqw; transform: translateY(calc(var(--i) * var(--i) * .9cqw)) rotate(calc(var(--i) * 2.4deg)); }
+.hand .slot-card.sel { transform: translateY(-13cqw) rotate(0deg) scale(1.1); }
+.board .table-surface { left: 0; right: 0; top: 40cqw; bottom: -14cqw; }
+.board .s3.me { bottom: 40cqw; }
+.board .last-card { width: 19cqw; }
+.board .center { top: 76cqw; }
+.board .ps { width: 14cqw; }
+.board .s3.me .me-side .ps { width: 19cqw; }
+.board .deck { top: 80cqw; right: 3cqw; }
+.ticker { top: 84cqw; }
