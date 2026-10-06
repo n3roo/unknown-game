@@ -1124,7 +1124,7 @@
       const el = document.getElementById('g-btn'); if (!el || el.dataset.ready) return; el.dataset.ready = '1';
       window.google.accounts.id.initialize({ client_id: S.auth.google, callback: (r) => send({ type: 'authgoogle', credential: r.credential }), ux_mode: 'popup' });
       window.google.accounts.id.renderButton(el, { theme: 'filled_black', size: 'large', shape: 'pill', text: 'continue_with', locale: 'de', width: Math.min(300, el.clientWidth || 300) });
-    }).catch(() => { box.textContent = ''; });
+    }).catch(() => { box.innerHTML = '<p class="hint" style="margin:4px 0">Google-Anmeldung konnte nicht geladen werden. Schalte ggf. Tracking-/Werbeblocker oder Brave-Shields für diese Seite aus.</p>'; });
   }
 
 
