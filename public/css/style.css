@@ -1137,11 +1137,9 @@ body.drop-ready .table-surface { box-shadow: 0 0 0 1.2cqw rgba(110,230,140,.8), 
 .av-toast .fb { animation-name: av-pop; animation-duration: 5s; }
 .av-roboter .fb { animation-name: av-bob, av-sway; animation-duration: 3s, 6s; }
 @keyframes av-pop { 0%,60%,100% { translate: 0 0; scale: 1 1; } 66% { scale: 1.05 .94; } 76% { translate: 0 -7%; scale: .98 1.04; } 86% { translate: 0 0; scale: 1.04 .95; } 92% { scale: 1 1; } }
-/* Blitz leuchtet, Wolke blitzt kurz mit */
+/* Nur der Blitz leuchtet auf */
 .fig .bit.bolt { animation: av-bit var(--bt, 5s) ease-in-out var(--bd, 0s) infinite, av-bolt 6s linear var(--bd, 0s) infinite; }
 @keyframes av-bolt { 0%,76%,100% { filter: drop-shadow(0 0 0 rgba(255,230,90,0)) brightness(1); } 78% { filter: drop-shadow(0 0 7px rgba(255,235,100,1)) brightness(1.5); } 80% { filter: brightness(.95); } 83% { filter: drop-shadow(0 0 10px rgba(255,235,100,1)) brightness(1.7); } 90% { filter: drop-shadow(0 0 4px rgba(255,235,100,.5)) brightness(1.15); } }
-.av-wolke .fb > img.body { animation: av-cloudflash 6s linear var(--d, 0s) infinite; }
-@keyframes av-cloudflash { 0%,76%,100% { filter: drop-shadow(0 6px 6px rgba(0,0,0,.55)) brightness(1); } 78% { filter: drop-shadow(0 6px 6px rgba(0,0,0,.55)) drop-shadow(0 0 8px rgba(255,235,120,.8)) brightness(1.1); } 83% { filter: drop-shadow(0 6px 6px rgba(0,0,0,.55)) drop-shadow(0 0 12px rgba(255,235,120,.9)) brightness(1.14); } 90% { filter: drop-shadow(0 6px 6px rgba(0,0,0,.55)) brightness(1.03); } }
 .fig .bit.drop { animation: av-drop 5s ease-in var(--bd, 0s) infinite; }
 @keyframes av-drop { 0% { translate: 0 -2cqmin; opacity: 0; scale: .5; } 12% { opacity: 1; scale: 1; } 80% { opacity: 1; } 100% { translate: 0 11cqmin; opacity: 0; scale: .9; } }
 .fig .bit.gear { animation: av-spin 10s linear var(--bd, 0s) infinite var(--dir, normal); }
@@ -1153,7 +1151,7 @@ body.drop-ready .table-surface { box-shadow: 0 0 0 1.2cqw rgba(110,230,140,.8), 
 .fig .orb { position: absolute; z-index: 2; pointer-events: none; aspect-ratio: 1; transform: translate(-50%, -50%); border-radius: 50%; background: radial-gradient(circle, rgba(255,214,120,.95), rgba(255,150,40,.5) 45%, transparent 72%); mix-blend-mode: screen; animation: av-orb 2.4s ease-in-out var(--d, 0s) infinite; }
 @keyframes av-orb { 0%,100% { opacity: .35; scale: .8; } 50% { opacity: 1; scale: 1.25; } }
 .me-bust .fig .orb { display: none; }
-@media (prefers-reduced-motion: reduce) { .fig .bit.bolt, .fig .bit.drop, .fig .bit.gear, .fig .orb, .av-wolke .fb > img.body { animation: none !important; } }
+@media (prefers-reduced-motion: reduce) { .fig .bit.bolt, .fig .bit.drop, .fig .bit.gear, .fig .orb { animation: none !important; } }
 
 /* Ranked-Kachel: gleiche Schrift wie Lobby erstellen / Gegen Bots */
 .tile-big.ranked b { color: #fff; -webkit-text-stroke: 1.4px #3a0a14; paint-order: stroke fill; text-shadow: 0 3px 0 #3a0a14; text-transform: uppercase; }
