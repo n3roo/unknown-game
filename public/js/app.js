@@ -771,6 +771,9 @@
       }
     }
     if (!html) { $modal.innerHTML = ''; S.lastModalKey = null; return; }
+    // Tippt jemand gerade in ein Eingabefeld, wird dasselbe Fenster nicht neu aufgebaut (sonst schließt sich die Tastatur)
+    const ae = document.activeElement;
+    if (ae && ae.tagName === 'INPUT' && $modal.contains(ae) && S.lastModalKey === html.slice(0, 40)) { S.modalDirty = true; return; }
     const keepScroll = $modal.querySelector('.sheet')?.scrollTop || 0;
     const mkey = html.slice(0, 40);
     const enter = S.lastModalKey !== mkey; S.lastModalKey = mkey;
@@ -1134,7 +1137,7 @@
     friendadd() {
       const el = document.getElementById('in-fcode'); const v = el ? el.value.trim() : '';
       if (!v) return toast('Gib den Code deines Freundes ein.', true);
-      send({ type: 'friendadd', code: v }); if (el) el.value = '';
+      send({ type: 'friendadd', code: v }); if (el) { el.value = ''; el.blur(); }
     },
     friendaccept(t) { send({ type: 'friendaccept', id: t.dataset.id }); },
     friendreject(t) { send({ type: 'friendreject', id: t.dataset.id }); },
@@ -1250,6 +1253,10 @@
     if (fn) fn(t);
   });
 
+  $modal.addEventListener('focusout', () => {
+    if (!S.modalDirty) return;
+    setTimeout(() => { const a = document.activeElement; if (!(a && a.tagName === 'INPUT' && $modal.contains(a))) { S.modalDirty = false; renderModals(); } }, 200);
+  });
   document.addEventListener('input', (e) => {
     if (e.target.id === 'in-name') { S.profile.name = e.target.value; saveProfile(); }
     if (e.target.id === 'in-code') e.target.value = e.target.value.toUpperCase();
@@ -1263,6 +1270,7 @@
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') { if (S.ui.modal) actions.close(); else if (S.ui.drawer) setDrawer(null); }
     if (e.key === 'Enter' && e.target.id === 'in-code') actions.join();
+    if (e.key === 'Enter' && e.target.id === 'in-fcode') actions.friendadd();
   });
 
   setInterval(() => { if (S.ui.modal && S.ui.modal.type === 'friends' && S.open) send({ type: 'friends' }); }, 8000);
