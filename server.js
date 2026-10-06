@@ -70,6 +70,13 @@ const server = http.createServer((req, res) => {
     res.writeHead(200, { 'Content-Type': 'text/plain' }).end('ok');
     return;
   }
+  if (pathname === '/.well-known/assetlinks.json') {
+    /* Android-App (TWA): Verknüpfung Domain <-> App. ANDROID_PACKAGE + ANDROID_SHA256 (mehrere mit Komma) in Render setzen. */
+    const pkg = process.env.ANDROID_PACKAGE; const fps = String(process.env.ANDROID_SHA256 || '').split(',').map((x) => x.trim()).filter(Boolean);
+    if (!pkg || !fps.length) { res.writeHead(404).end(); return; }
+    res.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify([{ relation: ['delegate_permission/common.handle_all_urls'], target: { namespace: 'android_app', package_name: pkg, sha256_cert_fingerprints: fps } }]));
+    return;
+  }
   if (pathname === '/favicon.ico') {
     res.writeHead(204).end();
     return;
