@@ -14,6 +14,7 @@ const G = require('./lib/game');
 const E = require('./lib/economy');
 const { leagueOf, LEAGUES } = require('./lib/rating');
 const B = require('./lib/bot');
+const FR = require('./lib/friends');
 const { Queue } = require('./lib/queue');
 const { createStore } = require('./lib/store');
 
@@ -199,6 +200,34 @@ const saveProfile = (p) => store.put(p).catch((err) => console.error('Profil spe
 function sendProfile(ws) {
   if (ws.profile) send(ws, { type: 'profile', profile: E.selfView(ws.profile), store: store.kind, regions: E.REGIONS, leagues: LEAGUES, rankedBots: RANKED_BOTS });
 }
+
+/* ------------------------------------------------------------ Freunde */
+
+const socketsOf = (profileId) => [...wss.clients].filter((c) => c.readyState === c.OPEN && c.profile && c.profile.id === profileId);
+async function getProfile(id) {
+  let p = profiles.get(id);
+  if (!p) { p = await store.get(id); if (p) profiles.set(id, p); }
+  return p ? FR.norm(p) : null;
+}
+function friendEntry(p) {
+  const socks = socketsOf(p.id);
+  const inRoom = socks.find((c) => c.ctx);
+  const lobby = inRoom && inRoom.ctx.room.game.phase === 'lobby' ? inRoom.ctx.room.code : null;
+  return { ...E.publicView(p), online: socks.length > 0, busy: !!inRoom && !lobby, lobby };
+}
+async function sendFriends(ws) {
+  if (!ws.profile || ws.readyState !== ws.OPEN) return;
+  const me = FR.norm(ws.profile);
+  const load = async (ids) => (await Promise.all(ids.map(getProfile))).filter(Boolean).map(friendEntry);
+  const [friends, incoming, outgoing] = await Promise.all([load(me.friends), load(me.reqIn), load(me.reqOut)]);
+  send(ws, { type: 'friends', code: FR.prettyCode(me.id), friends, incoming, outgoing });
+}
+const pushFriends = (profileId) => socketsOf(profileId).forEach((c) => sendFriends(c));
+/** Freunde informieren, wenn jemand online/offline geht. */
+function notifyFriendsOf(profile, except = null) {
+  for (const id of FR.norm(profile).friends) socketsOf(id).forEach((c) => { if (c !== except) sendFriends(c); });
+}
+const inviteCooldown = new Map();
 
 /** Spielerdaten aus dem Profil in eine Partie übernehmen (Hut, Rating, Land). */
 function syncPlayerFromProfile(room, profile) {
@@ -428,6 +457,81 @@ const handlers = {
       saveProfile(ws.profile);
     }
     sendProfile(ws);
+    sendFriends(ws);
+    notifyFriendsOf(ws.profile, ws);
+  },
+
+  /** Freundesliste anfordern. */
+  friends(ws) { sendFriends(ws); },
+
+  async friendadd(ws, msg) {
+    if (!ws.profile) return;
+    const prefix = FR.parseCode(msg.code);
+    if (!prefix) return send(ws, { type: 'error', message: 'Der Code besteht aus 8 Zeichen, z. B. ABCD-1234.' });
+    let other = [...profiles.values()].find((p) => p.id.startsWith(prefix));
+    if (!other) { other = await store.findByPrefix(prefix); if (other) { profiles.set(other.id, other); } }
+    if (!other) return send(ws, { type: 'error', message: 'Diesen Code gibt es nicht.' });
+    FR.norm(other);
+    const r = FR.request(ws.profile, other);
+    if (r.error) return send(ws, { type: 'error', message: r.error });
+    saveProfile(ws.profile); saveProfile(other);
+    send(ws, { type: 'toast', message: r.accepted ? `Du bist jetzt mit ${other.name} befreundet 🎉` : `Anfrage an ${other.name} gesendet` });
+    sendFriends(ws);
+    for (const c of socketsOf(other.id)) {
+      send(c, { type: 'toast', message: r.accepted ? `${ws.profile.name} ist jetzt dein Freund 🎉` : `${ws.profile.name} möchte dein Freund sein` });
+      sendFriends(c);
+    }
+  },
+
+  async friendaccept(ws, msg) {
+    if (!ws.profile) return;
+    const other = await getProfile(String(msg.id ?? ''));
+    if (!other) return;
+    const r = FR.accept(ws.profile, other);
+    if (r.error) return send(ws, { type: 'error', message: r.error });
+    saveProfile(ws.profile); saveProfile(other);
+    send(ws, { type: 'toast', message: `Du bist jetzt mit ${other.name} befreundet 🎉` });
+    sendFriends(ws);
+    for (const c of socketsOf(other.id)) { send(c, { type: 'toast', message: `${ws.profile.name} hat deine Anfrage angenommen 🎉` }); sendFriends(c); }
+  },
+
+  async friendreject(ws, msg) {
+    if (!ws.profile) return;
+    const other = await getProfile(String(msg.id ?? ''));
+    if (!other) return;
+    FR.decline(ws.profile, other);
+    saveProfile(ws.profile); saveProfile(other);
+    sendFriends(ws); pushFriends(other.id);
+  },
+
+  async friendremove(ws, msg) {
+    if (!ws.profile) return;
+    const other = await getProfile(String(msg.id ?? ''));
+    if (!other) return;
+    FR.remove(ws.profile, other);
+    saveProfile(ws.profile); saveProfile(other);
+    sendFriends(ws); pushFriends(other.id);
+  },
+
+  /** Freund in die eigene Lobby einladen. */
+  async invite(ws, msg) {
+    if (!ws.profile) return;
+    const me = FR.norm(ws.profile);
+    const id = String(msg.id ?? '');
+    if (!me.friends.includes(id)) return send(ws, { type: 'error', message: 'Das ist keiner deiner Freunde.' });
+    if (!ws.ctx || ws.ctx.room.game.phase !== 'lobby') return send(ws, { type: 'error', message: 'Du musst zuerst eine Lobby erstellen.' });
+    const room = ws.ctx.room;
+    if (room.game.players.length >= 4) return send(ws, { type: 'error', message: 'Die Lobby ist voll.' });
+    const other = await getProfile(id);
+    const socks = socketsOf(id);
+    if (!socks.length) return send(ws, { type: 'error', message: `${other ? other.name : 'Dein Freund'} ist gerade offline.` });
+    const free = socks.filter((c) => !c.ctx);
+    if (!free.length) return send(ws, { type: 'error', message: `${other.name} ist gerade in einer Lobby oder Partie.` });
+    const key = `${me.id}>${id}`;
+    if (Date.now() - (inviteCooldown.get(key) || 0) < 4000) return;
+    inviteCooldown.set(key, Date.now());
+    for (const c of free) send(c, { type: 'invite', code: room.code, from: { name: me.name, avatar: me.avatar, hat: me.hat } });
+    send(ws, { type: 'toast', message: `Einladung an ${other.name} gesendet` });
   },
 
   /** Name, Avatar, Land ändern. */
@@ -685,6 +789,7 @@ function onMessage(ws, raw) {
 
 function onClose(ws) {
   if (ws.profile) {
+    setTimeout(() => notifyFriendsOf(ws.profile), 50).unref();
     queue.remove(ws.profile.id);
     if (queueSockets.get(ws.profile.id) === ws) queueSockets.delete(ws.profile.id);
   }

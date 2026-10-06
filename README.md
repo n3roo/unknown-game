@@ -46,3 +46,6 @@ Ranked-Suche fällt nach 15 s auf Bots zurück (nur Anlaufphase). Abschalten: au
 
 ## Partien überstehen Neustarts
 Laufende Räume werden gebündelt (alle 0,8 s bei Änderungen) im Store gesichert (Turso-Tabelle `rooms`, sonst Datei/Speicher) und beim Start wiederhergestellt. Bei SIGTERM (Render-Update) wird vorher noch gesichert. Spieler verbinden sich automatisch wieder (Token im Browser).
+
+## Freunde
+Freundescode = erste 8 Zeichen der Profil-ID (`ABCD-1234`). Anfrage per Code oder Link `/?friend=ABCD1234`, annehmen/ablehnen/entfernen, Online-Status, Freunde in die eigene Lobby einladen (Popup beim Freund) und Lobby eines Freundes direkt beitreten. Logik in `lib/friends.js`.

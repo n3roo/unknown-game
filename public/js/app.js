@@ -26,7 +26,7 @@
     reconnectDelay: 800,
     noReconnect: false,
     pingTimer: null,
-    me: null, regions: [], leagues: [], storeKind: null, hatsDef: [], q: null, lb: null, ranked: false, rewards: null,
+    me: null, friends: null, regions: [], leagues: [], storeKind: null, hatsDef: [], q: null, lb: null, ranked: false, rewards: null,
     secret: null,
     ui: { prevHat: null, lbScope: 'world', drawer: null, marks: { c: {}, a: {}, l: {} }, sel: null, modal: null, guess: { sel: {} }, pickAvatar: false, hideEnd: false },
   };
@@ -231,7 +231,7 @@
   function handle(m) {
     switch (m.type) {
       case 'joined':
-        S.q = null; if (S.ui.modal && ['ranked', 'wardrobe', 'shop', 'leaderboard', 'account'].includes(S.ui.modal.type)) S.ui.modal = null;
+        S.q = null; if (S.ui.modal && ['ranked', 'wardrobe', 'shop', 'leaderboard', 'account', 'friends'].includes(S.ui.modal.type)) S.ui.modal = null;
         S.session = { code: m.code, token: m.token, playerId: m.playerId };
         if (m.vsBot) toast('Übungsrunde gegen Bots (ohne Rangpunkte)');
         LS.set('unknown.session', S.session);
@@ -264,6 +264,16 @@
         SFX.coin(); toast(`+${m.gold} Gold${m.kind === 'daily' ? ` · Serie ${m.streak}` : ''}`);
         break;
       case 'toast': toast(m.message); break;
+      case 'friends': {
+        const first = !S.friends;
+        S.friends = m;
+        const fp = new URLSearchParams(location.search).get('friend');
+        if (first && fp) { history.replaceState(null, '', location.pathname); send({ type: 'friendadd', code: fp }); }
+        if (S.ui.modal && S.ui.modal.type === 'friends') { const inp = document.getElementById('in-fcode'); const v = inp ? inp.value : ''; renderModals(); const n = document.getElementById('in-fcode'); if (n && v) n.value = v; }
+        else if (!S.st) render();
+        break;
+      }
+      case 'invite': showInvite(m); break;
       case 'error':
         toast(m.message, true);
         break;
@@ -308,6 +318,7 @@
     const lg = me ? leagueFor(me.rating) : null;
     $app.innerHTML = `
       <div class="chips">
+        <button class="chip" data-act="friends" aria-label="Freunde"><i>👥</i><b>${friendsChip()}</b>${S.friends && S.friends.incoming.length ? `<em class="dotbadge">${S.friends.incoming.length}</em>` : ''}</button>
         <button class="chip" data-act="shop" aria-label="Shop"><i>🪙</i><b>${me ? me.gold : '–'}</b></button>
         <button class="chip" data-act="ranked" aria-label="Rang"><i>${lg ? lg.icon : '🏅'}</i><b>${me ? me.rating : '–'}</b></button>
         <button class="chip" data-act="account" aria-label="Konto"><i>⭐</i><b>Lv ${me ? me.level : 1}</b></button>
@@ -392,7 +403,7 @@
       <h1 class="logo-h">${LOGO("sm")}</h1>
       <section class="panel stack">
         <div class="code-box"><div><span class="muted" style="font-size:13px">Lobby-Code</span><br><strong>${esc(S.code)}</strong></div>
-          <button class="btn small primary" data-act="share">Einladen</button></div>
+          <span class="row"><button class="btn small" data-act="friends" aria-label="Freunde einladen">👥 Freunde</button><button class="btn small primary" data-act="share">Link</button></span></div>
         <p class="hint" style="margin:0">Set: ${esc(setDef().name)} · 2 bis 4 Spieler</p>
       </section>
       <section class="panel"><h2>Spieler (${st.players.length}/4)</h2><div class="slots">${slots.join('')}</div></section>
@@ -746,6 +757,7 @@
       else if (m.type === 'shop') html = shopHTML();
       else if (m.type === 'leaderboard') html = leaderboardHTML();
       else if (m.type === 'account') html = accountHTML();
+      else if (m.type === 'friends') html = friendsHTML();
       else if (m.type === 'guess') html = guessHTML();
       else if (m.type === 'leave') {
         html = `<h2>Spiel verlassen?</h2><p>${st && st.phase === 'lobby' ? 'Du verlässt die Lobby.' : S.ranked ? 'In einer Ranked-Partie zählt das als Niederlage: −20 Punkte.' : 'Du scheidest aus der laufenden Partie aus.'}</p>
@@ -931,6 +943,59 @@
       <button class="btn" data-act="close">Schließen</button>`;
   }
 
+  /* ------------------------------------------------- Freunde */
+
+  function friendsChip() {
+    const f = S.friends; if (!f) return '–';
+    return `${f.friends.filter((x) => x.online).length}/${f.friends.length}`;
+  }
+  function friendRow(f, kind) {
+    const inLobbyMe = !!(S.st && S.st.phase === 'lobby');
+    let status = 'offline'; let cls = 'off';
+    if (f.online) { status = f.lobby ? 'in einer Lobby' : f.busy ? 'in einer Partie' : 'online'; cls = f.busy ? 'busy' : 'on'; }
+    let btns = '';
+    if (kind === 'friend') {
+      if (inLobbyMe && f.online && !f.busy && !f.lobby) btns += `<button class="btn small primary" data-act="invitefriend" data-id="${esc(f.id)}">Einladen</button>`;
+      if (!S.st && f.lobby) btns += `<button class="btn small primary" data-act="joinfriend" data-code="${esc(f.lobby)}">Beitreten</button>`;
+      btns += S.ui.frConfirm === f.id
+        ? `<button class="btn small no" data-act="friendremove" data-id="${esc(f.id)}">Entfernen?</button>`
+        : `<button class="btn small ghost" data-act="frconfirm" data-id="${esc(f.id)}" aria-label="Freund entfernen">✕</button>`;
+    } else if (kind === 'in') {
+      btns = `<button class="btn small primary" data-act="friendaccept" data-id="${esc(f.id)}">Annehmen</button><button class="btn small ghost" data-act="friendreject" data-id="${esc(f.id)}" aria-label="Ablehnen">✕</button>`;
+    } else {
+      btns = `<button class="btn small ghost" data-act="friendremove" data-id="${esc(f.id)}">Zurückziehen</button>`;
+    }
+    return `<li class="fr-row"><span class="fr-av">${avatarHTML(f.avatar, 38)}</span><span class="fr-n"><b>${esc(f.name)}</b><small class="${kind === 'friend' ? cls : ''}">${kind === 'friend' ? status : kind === 'in' ? 'möchte dein Freund sein' : 'Anfrage gesendet'}</small></span><span class="fr-b">${btns}</span></li>`;
+  }
+  function friendsHTML() {
+    const f = S.friends;
+    if (!f) return '<h2>Freunde</h2><p class="muted">Lade …</p><button class="btn" data-act="close">Schließen</button>';
+    const list = (arr, kind) => (arr.length ? `<ul class="fr-list">${arr.map((x) => friendRow(x, kind)).join('')}</ul>` : '');
+    const online = [...f.friends].sort((a, b) => Number(b.online) - Number(a.online) || a.name.localeCompare(b.name));
+    return `<h2>Freunde</h2>
+      <div class="fr-code"><div><small>Dein Freundescode</small><strong>${esc(f.code)}</strong></div>
+        <span class="row"><button class="btn small" data-act="copyfcode">Kopieren</button><button class="btn small primary" data-act="sharefcode">Teilen</button></span></div>
+      <div class="fr-add"><input id="in-fcode" type="text" inputmode="text" maxlength="9" autocomplete="off" autocapitalize="characters" placeholder="Freundescode eingeben"><button class="btn small primary" data-act="friendadd">Hinzufügen</button></div>
+      ${f.incoming.length ? `<h3 class="fr-h">Anfragen (${f.incoming.length})</h3>${list(f.incoming, 'in')}` : ''}
+      <h3 class="fr-h">Freunde (${f.friends.length})</h3>
+      ${online.length ? list(online, 'friend') : '<p class="hint">Noch keine Freunde. Tausche deinen Code mit jemandem und gib seinen oben ein.</p>'}
+      ${f.outgoing.length ? `<h3 class="fr-h">Gesendet</h3>${list(f.outgoing, 'out')}` : ''}
+      <button class="btn" data-act="close">Schließen</button>`;
+  }
+  let inviteTimer = null;
+  function showInvite(m) {
+    if (S.st) return; // schon in einer Lobby/Partie
+    let el = document.getElementById('invite-pop');
+    if (!el) { el = document.createElement('div'); el.id = 'invite-pop'; document.body.appendChild(el); }
+    el.innerHTML = `<span class="ip-av">${avatarHTML(m.from.avatar, 40)}</span><span class="ip-t"><b>${esc(m.from.name)}</b> lädt dich ein</span>
+      <button class="btn small primary" data-act="acceptinvite" data-code="${esc(m.code)}">Beitreten</button><button class="btn small ghost" data-act="dismissinvite" aria-label="Ablehnen">✕</button>`;
+    el.className = 'show';
+    SFX.coin && SFX.coin();
+    clearTimeout(inviteTimer);
+    inviteTimer = setTimeout(() => { el.className = ''; }, 30000);
+  }
+  const hideInvite = () => { const el = document.getElementById('invite-pop'); if (el) el.className = ''; clearTimeout(inviteTimer); };
+
   function accountHTML() {
     const me = S.me; const sec = deviceSecret();
     const grouped = sec.match(/.{1,4}/g).join('-');
@@ -1037,6 +1102,29 @@
     ranked() { S.ui.modal = { type: 'ranked' }; renderModals(); },
     rankedjoin() { send({ type: 'rankedjoin' }); },
     devcode() { const v = (document.getElementById('in-dev') || {}).value || ''; if (v) send({ type: 'devcode', code: v }); },
+    friends() { S.ui.frConfirm = null; S.ui.modal = { type: 'friends' }; send({ type: 'friends' }); renderModals(); },
+    friendadd() {
+      const el = document.getElementById('in-fcode'); const v = el ? el.value.trim() : '';
+      if (!v) return toast('Gib den Code deines Freundes ein.', true);
+      send({ type: 'friendadd', code: v }); if (el) el.value = '';
+    },
+    friendaccept(t) { send({ type: 'friendaccept', id: t.dataset.id }); },
+    friendreject(t) { send({ type: 'friendreject', id: t.dataset.id }); },
+    friendremove(t) { S.ui.frConfirm = null; send({ type: 'friendremove', id: t.dataset.id }); },
+    frconfirm(t) { S.ui.frConfirm = t.dataset.id; renderModals(); },
+    invitefriend(t) { send({ type: 'invite', id: t.dataset.id }); },
+    joinfriend(t) { S.ui.modal = null; renderModals(); send({ type: 'join', code: t.dataset.code, name: S.profile.name, avatar: S.profile.avatar }); },
+    acceptinvite(t) { hideInvite(); send({ type: 'join', code: t.dataset.code, name: S.profile.name, avatar: S.profile.avatar }); },
+    dismissinvite() { hideInvite(); },
+    async copyfcode() { try { await navigator.clipboard.writeText(S.friends.code); toast('Code kopiert.'); } catch { toast(S.friends.code); } },
+    async sharefcode() {
+      const code = S.friends.code;
+      const url = `${location.origin}/?friend=${code.replace('-', '')}`;
+      try {
+        if (navigator.share) { await navigator.share({ title: 'UNKNOWN', text: `Sei mein Freund bei UNKNOWN! Code: ${code}`, url }); return; }
+        await navigator.clipboard.writeText(url); toast('Link kopiert.');
+      } catch { /* abgebrochen */ }
+    },
     botgame() { send({ type: 'botgame', bots: 2 }); },
     rankedleave() { send({ type: 'rankedleave' }); },
     rankedagain() { leaveNow(); S.ui.modal = { type: 'ranked' }; send({ type: 'rankedjoin' }); renderModals(); },
@@ -1140,6 +1228,7 @@
     if (e.key === 'Enter' && e.target.id === 'in-code') actions.join();
   });
 
+  setInterval(() => { if (S.ui.modal && S.ui.modal.type === 'friends' && S.open) send({ type: 'friends' }); }, 8000);
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden && !S.open && !S.noReconnect && (!S.ws || S.ws.readyState > 1)) connect();
   });
