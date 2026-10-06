@@ -1180,3 +1180,12 @@ body.drop-ready .table-surface { box-shadow: 0 0 0 1.2cqw rgba(110,230,140,.8), 
 .board .table-surface { width: 124cqw; margin-left: -62cqw; top: 48cqw; }
 .board .s3.opp.side .s3-fig { translate: 0 1cqw; }
 .board .s3.opp.mid .s3-fig { translate: 0 0; }
+
+/* Namensschild: Rahmen statt Punkte (grün = keine Fehler, rot = falsche Tipps) */
+.s3-plate { padding: .7cqw 2.4cqw; gap: 1.2cqw; border-width: 2px; }
+.s3-plate.good { border-color: #4fb06a; }
+.s3-plate.bad { border-color: #d9534f; }
+.s3-plate.w2 { border-width: 3px; box-shadow: 0 0 10px rgba(217,83,79,.65); }
+.s3-plate.w3 { border-width: 3px; box-shadow: 0 0 14px rgba(217,83,79,.9); }
+.board .s3.opp .s3-plate .nm { max-width: 18cqw; }
+.s3.turn .s3-plate.good { border-color: #4fb06a; } .s3.turn .s3-plate.bad { border-color: #d9534f; }

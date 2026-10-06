@@ -491,13 +491,12 @@
     const secret = p.secret !== null
       ? `<button class="card-btn s3-secret" data-act="zoom" data-id="${p.secret}" aria-label="Verdächtigen von ${esc(p.name)} ansehen">${cardHTML(p.secret)}</button>`
       : `<div class="s3-secret">${backHTML()}</div>`;
-    const pips = [0, 1, 2].map((k) => `<span class="pip ${k < p.wrong ? 'on' : ''}"></span>`).join('');
     let tag = '';
     if (p.out) tag = 'raus';
     else if (p.bot) tag = '🤖';
     else if (!p.connected) tag = 'getrennt';
     else if (st.phase === 'clues' && !p.clueGiven) tag = 'überlegt';
-    const plate = `<div class="s3-plate"><span class="nm">${S.ranked && p.region ? `<i class="fl">${flag(p.region)}</i>` : ''}${esc(isMe ? 'Du' : p.name)}</span><span class="pips" title="Falsche Tipps">${pips}</span>${tag ? `<em>${tag}</em>` : ''}</div>`;
+    const plate = `<div class="s3-plate ${p.wrong > 0 ? 'bad w' + Math.min(p.wrong, 3) : 'good'}" title="Falsche Tipps: ${p.wrong}/3"><span class="nm">${S.ranked && p.region ? `<i class="fl">${flag(p.region)}</i>` : ''}${esc(isMe ? 'Du' : p.name)}</span>${tag ? `<em>${tag}</em>` : ''}</div>`;
     if (isMe) {
       return `<div class="s3 me ${turn ? 'turn' : ''} ${p.out ? 'out' : ''}">
         <div class="me-side">${pileStack(p, 'related')}</div>
