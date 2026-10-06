@@ -17,3 +17,14 @@ for arg in sys.argv[1:]:
     c.putalpha(m)
     c.save(os.path.join(OUT, f'{int(num)}.webp'), quality=90)
     print('ok', num, c.size)
+
+
+# sets.json: Liste der vorhandenen Kartenbilder aktualisieren (nur diese werden geladen)
+import json, os, re
+_dir = os.path.join('public', 'assets', 'cards', 'western')
+_ids = sorted(int(f[:-5]) for f in os.listdir(_dir) if re.fullmatch(r'\d+\.webp', f))
+_p = os.path.join('public', 'data', 'sets.json')
+_d = json.load(open(_p, encoding='utf-8'))
+_d['sets'][0]['cardArtIds'] = _ids
+open(_p, 'w', encoding='utf-8').write(json.dumps(_d, ensure_ascii=False, indent=1))
+print('cardArtIds:', _ids)

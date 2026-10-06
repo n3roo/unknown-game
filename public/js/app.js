@@ -92,7 +92,7 @@
     /* Sobald fertig gemalte Karten existieren: sets.json -> "cardArt": "assets/cards/western/{id}.webp".
        Das Bild liegt dann über der Platzhalter-Komposition; fehlt eine Datei, bleibt die Komposition sichtbar. */
     const id = typeof x === 'object' ? x.c * N + x.a : x;
-    const art = setDef().cardArt
+    const art = setDef().cardArt && (setDef().cardArtIds || []).includes(id)
       ? `<img class="art" src="${esc(setDef().cardArt.replace('{id}', id))}" alt="" draggable="false" loading="lazy" onload="this.closest('.card').classList.add('painted')" onerror="this.remove()">` : '';
     return `<div class="card ${cls}" role="img" aria-label="${esc(label)}"><div class="card-face">
       <div class="pic">
@@ -128,6 +128,55 @@
       const isTaken = taken.includes(a.id) && a.id !== selected;
       return `<button class="avatar-pick" data-act="avatar" data-id="${esc(a.id)}" aria-pressed="${a.id === selected}" ${isTaken ? 'disabled' : ''} aria-label="${esc(a.name)}">${avatarHTML(a.id, 38)}</button>`;
     }).join('')}</div>`;
+  }
+
+
+  /* ------------------------------------------------- Effekte */
+
+  S.fx = { fresh: false, deal: false };
+  let fxTimer = null;
+  const fxLayer = () => { let l = document.getElementById('fx-layer'); if (!l) { l = document.createElement('div'); l.id = 'fx-layer'; document.body.appendChild(l); } return l; };
+
+  function banner(text, cls = '') {
+    const el = document.createElement('div');
+    el.className = `fx-banner ${cls}`; el.textContent = text;
+    fxLayer().appendChild(el);
+    setTimeout(() => el.remove(), 1700);
+  }
+  function confetti() {
+    const layer = fxLayer(); const colors = ['#ffd24a', '#ff5a8a', '#4be0ff', '#6be28a', '#ff8a2b', '#b48cff'];
+    for (let i = 0; i < 70; i++) {
+      const c = document.createElement('i'); c.className = 'confetti';
+      c.style.cssText = `left:${Math.random() * 100}%;background:${colors[i % colors.length]};--dx:${(Math.random() - .5) * 160}px;--rot:${Math.random() * 720}deg;animation-duration:${1.8 + Math.random() * 1.6}s;animation-delay:${Math.random() * .5}s;width:${6 + Math.random() * 6}px;height:${9 + Math.random() * 8}px`;
+      layer.appendChild(c); setTimeout(() => c.remove(), 4200);
+    }
+  }
+
+  /** Töne, Banner und Animations-Marker nach einem neuen Spielstand. */
+  function fxFor(prev, st, m) {
+    const fx = { fresh: false, deal: false };
+    const wasPlaying = prev && prev.phase !== 'lobby';
+    if (st.phase === 'clues' && (!prev || prev.phase === 'lobby' || prev.phase === 'finished')) fx.deal = true;
+    if (prev && prev.events && st.events.length > prev.events.length && prev.phase !== 'lobby') {
+      for (const ev of st.events.slice(prev.events.length)) {
+        if (ev.type === 'play') { fx.fresh = true; SFX.card(); setTimeout(() => (ev.related ? SFX.yes() : SFX.no()), 220); }
+        else if (ev.type === 'guess') { fx.fresh = true; SFX.card(); setTimeout(() => (ev.ok ? SFX.yes() : SFX.wrong()), 220); }
+        else if (ev.type === 'flip') SFX.tap();
+      }
+    }
+    const myTurnNow = st.phase === 'playing' && st.current === st.you && !st.players[st.you].out;
+    const myTurnBefore = prev && prev.phase === 'playing' && prev.current === prev.you;
+    if (wasPlaying && myTurnNow && !myTurnBefore) { setTimeout(() => { SFX.turn(); banner('Du bist dran!'); }, 450); }
+    if (st.phase === 'finished' && prev && prev.phase !== 'finished') {
+      const won = st.winner === st.youId;
+      setTimeout(() => { if (won) { SFX.win(); confetti(); } else SFX.lose(); }, 500);
+      if (m && m.rewards) {
+        if (m.rewards.gold) setTimeout(() => SFX.coin(), 1300);
+        if (m.rewards.levelUp || m.rewards.leagueUp) setTimeout(() => SFX.levelup(), 1800);
+      }
+    }
+    S.fx = fx;
+    clearTimeout(fxTimer); fxTimer = setTimeout(() => { S.fx = { fresh: false, deal: false }; }, 1200);
   }
 
   /* ----------------------------------------------------- Netzwerk */
@@ -188,11 +237,13 @@
         if (new URLSearchParams(location.search).has('code')) history.replaceState(null, '', location.pathname);
         break;
       case 'state':
-        S.st = m.state; S.code = m.code; S.setId = m.setId; S.ranked = !!m.ranked; S.rewards = m.rewards || null;
+        { const prev = S.st; S.st = m.state; fxFor(prev, m.state, m); }
+        S.code = m.code; S.setId = m.setId; S.ranked = !!m.ranked; S.rewards = m.rewards || null;
         if (m.state.phase !== 'finished') S.ui.hideEnd = false;
         render();
         break;
       case 'profile':
+        { const old = S.me; if (old && m.profile.hats.length > old.hats.length) SFX.buy(); }
         S.me = m.profile; S.storeKind = m.store; if (m.regions) S.regions = m.regions; if (m.leagues) S.leagues = m.leagues;
         if (!S.profile.name) { S.profile.name = S.me.name; saveProfile(); }
         if (S.me.avatar && !S.st) { S.profile.avatar = S.me.avatar; saveProfile(); }
@@ -393,7 +444,7 @@
       const p = byId(last.player);
       const ok = last.type === 'play' ? last.related : last.ok;
       const label = last.type === 'play' ? (ok ? 'Passt' : 'Passt nicht') : (ok ? 'Richtig' : 'Falsch');
-      card = `<div class="last"><div class="last-card">${cardHTML(last.type === 'guess' ? last.guess : last.card)}</div>
+      card = `<div class="last ${S.fx.fresh ? 'fresh' : ''}"><div class="last-card">${cardHTML(last.type === 'guess' ? last.guess : last.card)}</div>
         <div class="stamp ${ok ? 'yes' : 'no'}">${esc(p ? p.name + ': ' : '')}${label}</div></div>`;
     }
     return `<div class="center">${card}</div>
@@ -527,7 +578,7 @@
         ${tickerHTML()}
         ${actions ? `<div class="actions-row">${actions}</div>` : ''}
         ${seatHTML(me, st.you, true, null)}
-        <div class="hand" aria-label="Deine Handkarten">${handCards.join('')}</div>
+        <div class="hand ${S.fx.deal ? 'dealing' : ''}" aria-label="Deine Handkarten">${handCards.join('')}</div>
       </div></section>`;
     fitBoard();
   }
@@ -639,9 +690,11 @@
           <div class="actions"><button class="btn" data-act="close">Bleiben</button><button class="btn no" data-act="leaveconfirm">Verlassen</button></div>`;
       }
     }
-    if (!html) { $modal.innerHTML = ''; return; }
+    if (!html) { $modal.innerHTML = ''; S.lastModalKey = null; return; }
     const keepScroll = $modal.querySelector('.sheet')?.scrollTop || 0;
-    $modal.innerHTML = `<div class="modal" data-closable="${closable}" role="dialog" aria-modal="true"><div class="sheet">${html}</div></div>`;
+    const mkey = html.slice(0, 40);
+    const enter = S.lastModalKey !== mkey; S.lastModalKey = mkey;
+    $modal.innerHTML = `<div class="modal ${enter ? 'enter' : ''}" data-closable="${closable}" role="dialog" aria-modal="true"><div class="sheet">${html}</div></div>`;
     const sheet = $modal.querySelector('.sheet');
     if (sheet) sheet.scrollTop = keepScroll;
   }
@@ -822,6 +875,7 @@
     return `<h2>Dein Konto</h2>
       <p class="muted" style="margin-top:0">${me ? `${esc(me.name)} · Level ${me.level} · ${me.played} Spiele · ${me.wins} Siege` : ''}</p>
       ${S.storeKind === 'memory' ? '<p class="hint warn">Hinweis: Der Server speichert gerade nur vorübergehend. Nach einem Neustart kann der Spielstand weg sein.</p>' : ''}
+      <div class="row" style="margin:6px 0"><button class="btn small ${SFX.on ? '' : 'ghost'}" data-act="togglesound">${SFX.on ? '🔊 Sound an' : '🔇 Sound aus'}</button><button class="btn small ${SFX.vib ? '' : 'ghost'}" data-act="togglevib">${SFX.vib ? '📳 Vibration an' : 'Vibration aus'}</button></div>
       <p style="margin:8px 0 4px"><b>Wiederherstellungs-Code</b></p>
       <p class="hint" style="margin:0 0 6px">Damit holst du dein Konto (Gold, Hüte, Rang) auf einem anderen Gerät zurück. Geheim halten!</p>
       <div class="secret" id="secret-box">${grouped}</div>
@@ -890,6 +944,7 @@
     leavepage() { S.ui.modal = { type: 'leave' }; renderModals(); },
     leaveconfirm() { leaveNow(); },
     sel(t) {
+      SFX.select();
       const id = Number(t.dataset.id);
       S.ui.sel = S.ui.sel === id ? null : id;
       render();
@@ -925,6 +980,8 @@
     prevhat(t) { S.ui.prevHat = t.dataset.hat; renderModals(); },
     buy(t) { send({ type: 'buy', hat: t.dataset.hat }); },
     equip(t) { send({ type: 'equip', hat: t.dataset.hat || null }); },
+    togglesound() { SFX.on = !SFX.on; renderModals(); },
+    togglevib() { SFX.vib = !SFX.vib; renderModals(); },
     account() { S.ui.modal = { type: 'account' }; renderModals(); },
     async copysecret() { try { await navigator.clipboard.writeText(deviceSecret()); toast('Code kopiert.'); } catch { toast('Kopieren nicht möglich – bitte markieren und kopieren.', true); } },
     restore() {
