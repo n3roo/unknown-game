@@ -93,7 +93,7 @@
        Das Bild liegt dann über der Platzhalter-Komposition; fehlt eine Datei, bleibt die Komposition sichtbar. */
     const id = typeof x === 'object' ? x.c * N + x.a : x;
     const art = setDef().cardArt && (setDef().cardArtIds || []).includes(id)
-      ? `<img class="art" src="${esc(setDef().cardArt.replace('{id}', id))}" alt="" draggable="false" loading="lazy" onload="this.closest('.card').classList.add('painted')" onerror="this.remove()">` : '';
+      ? `<img class="art" src="${esc(setDef().cardArt.replace('{id}', id))}?v=2" alt="" draggable="false" loading="lazy" onload="this.closest('.card').classList.add('painted')" onerror="this.remove()">` : '';
     return `<div class="card ${cls}" role="img" aria-label="${esc(label)}"><div class="card-face">
       <div class="pic">
         <img class="bg" src="${esc(f.l.img)}" alt="" draggable="false">
