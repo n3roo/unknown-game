@@ -118,9 +118,40 @@
     const h = av.hat;
     return `<span class="hat ${/krone|liga_|^dev$/.test(hat) ? 'crown' : ''}" style="left:${h.x}%;top:${h.y}%;width:${h.w}%;--hs:${(window.HAT_FIT || {})[hat] || 1.25};--hk:${(window.HAT_SINK || {})[hat] || 85}%">${window.HATS[hat]}</span>`;
   }
+  /* Lose Teile (Steine, Blasen, Tropfen) schweben frei; Partikel je Figur */
+  const FX = { feuer: ['spark', 6], teufel: ['spark', 4], schatten: ['smoke', 3], hai: ['bubble', 4], krake: ['bubble', 4], pinguin: ['snow', 6], hase: ['heart', 3], weiss: ['star', 4], alien: ['star', 4] };
+  const SYM = { heart: '♥', star: '✦' };
+  function bitsHTML(a) {
+    const big = a.id === 'golem';
+    const now = (Date.now() / 1000) % 60;
+    return (a.bits || []).map((b, i) => {
+      const ax = ((i % 2 ? -1 : 1) * (big ? 3.2 + (i % 3) : 1.6 + (i % 2))).toFixed(1);
+      const ay = (big ? 3.4 + (i % 2) * 2 : 2.2 + (i % 2)).toFixed(1);
+      const ar = ((i % 2 ? -1 : 1) * (big ? 10 + i * 3 : 5)).toFixed(0);
+      const dur = [5, 6, 4, 6, 5][i % 5];
+      return `<img class="bit" src="${esc(b.src)}" alt="" draggable="false" style="left:${b.x}%;top:${b.y}%;width:${b.w}%;height:${b.h}%;--ax:${ax}cqmin;--ay:${ay}cqmin;--ar:${ar}deg;--bt:${dur}s;--bd:-${(now + i * 1.7).toFixed(2)}s">`;
+    }).join('');
+  }
+  function eyesHTML(a) {
+    const box = (e) => `left:${e.x}%;top:${e.y}%;width:${e.w}%;height:${e.h}%`;
+    let h = '';
+    if (a.eyes) h += `<img class="eyes" src="${esc(a.eyes.src)}" alt="" draggable="false" style="${box(a.eyes)}">`;
+    if (a.wink) h += `<img class="wink" src="${esc(a.wink.src)}" alt="" draggable="false" style="${box(a.wink)}"><i class="wstar" style="left:${(a.wink.x + a.wink.w * 0.9).toFixed(1)}%;top:${(a.wink.y - 4).toFixed(1)}%">✦</i>`;
+    return h;
+  }
+  function fxHTML(a) {
+    const f = FX[a.id]; if (!f) return '';
+    const [kind, n] = f; const now = (Date.now() / 1000) % 60;
+    let h = '';
+    for (let i = 0; i < n; i++) {
+      const x = 22 + ((i * 37 + a.id.length * 11) % 56);
+      h += `<i style="--x:${x}%;--sz:${(2.6 + (i * 7) % 3 * 1.1).toFixed(1)}cqmin;--dx:${((i % 2 ? 1 : -1) * (1 + i % 3)).toFixed(1)}cqmin;--dl:-${(now + i * 1.9).toFixed(2)}s">${SYM[kind] || ''}</i>`;
+    }
+    return `<span class="fx ${kind}" aria-hidden="true">${h}</span>`;
+  }
   function figHTML(id, cls = '', hat = null) {
     const a = avatarDef(id);
-    return `<span class="fig av-${esc(a.id)} ${cls}"><span class="fb" style="--ar:${a.ar || 1};--d:-${((Date.now() / 1000) % 60).toFixed(2)}s"><img src="assets/avatars/${esc(a.id)}_cut.png" alt="${esc(a.name)}" data-e="${a.emoji}" onerror="this.replaceWith(Object.assign(document.createElement('b'),{textContent:this.dataset.e,className:'emo'}))">${hatHTML(a, hat)}</span></span>`;
+    return `<span class="fig av-${esc(a.id)} ${cls}"><span class="fb" style="--ar:${a.ar || 1};--d:-${((Date.now() / 1000) % 60).toFixed(2)}s"><img src="assets/avatars/${esc(a.id)}_cut.png" alt="${esc(a.name)}" data-e="${a.emoji}" onerror="this.replaceWith(Object.assign(document.createElement('b'),{textContent:this.dataset.e,className:'emo'}))">${bitsHTML(a)}${eyesHTML(a)}${fxHTML(a)}${hatHTML(a, hat)}</span></span>`;
   }
   const LOGO = (cls = '') => `<img class="logo-img ${cls}" src="assets/logo.png" alt="UNKNOWN" draggable="false">`;
   function avatarPicker(selected, taken = []) {

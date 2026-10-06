@@ -33,6 +33,36 @@
    "x": 56.4,
    "y": 15,
    "w": 44
+  },
+  "bits": [
+   {
+    "src": "assets/avatars/bits/geist_1.png",
+    "x": 0.24,
+    "y": 41.22,
+    "w": 16.71,
+    "h": 17.56
+   },
+   {
+    "src": "assets/avatars/bits/geist_2.png",
+    "x": 81.18,
+    "y": 67.56,
+    "w": 8.0,
+    "h": 8.78
+   },
+   {
+    "src": "assets/avatars/bits/geist_3.png",
+    "x": 7.06,
+    "y": 74.39,
+    "w": 6.82,
+    "h": 7.32
+   }
+  ],
+  "eyes": {
+   "src": "assets/avatars/bits/geist_eyes.png",
+   "x": 47.06,
+   "y": 19.02,
+   "w": 30.82,
+   "h": 28.05
   }
  },
  {
@@ -45,6 +75,13 @@
    "x": 52.2,
    "y": 12.3,
    "w": 53.0
+  },
+  "wink": {
+   "src": "assets/avatars/bits/pinguin_wink.png",
+   "x": 57.41,
+   "y": 31.94,
+   "w": 14.82,
+   "h": 11.67
   }
  },
  {
@@ -57,6 +94,13 @@
    "x": 53.9,
    "y": 9.4,
    "w": 57.0
+  },
+  "eyes": {
+   "src": "assets/avatars/bits/weiss_eyes.png",
+   "x": 31.3,
+   "y": 17.75,
+   "w": 42.32,
+   "h": 24.01
   }
  },
  {
@@ -93,6 +137,29 @@
    "x": 51.2,
    "y": 11.1,
    "w": 52.0
+  },
+  "bits": [
+   {
+    "src": "assets/avatars/bits/schleim_1.png",
+    "x": 0.5,
+    "y": 63.66,
+    "w": 9.65,
+    "h": 11.29
+   },
+   {
+    "src": "assets/avatars/bits/schleim_2.png",
+    "x": 85.15,
+    "y": 70.43,
+    "w": 10.15,
+    "h": 11.74
+   }
+  ],
+  "eyes": {
+   "src": "assets/avatars/bits/schleim_eyes.png",
+   "x": 40.59,
+   "y": 19.64,
+   "w": 33.17,
+   "h": 26.41
   }
  },
  {
@@ -117,6 +184,13 @@
    "x": 53.5,
    "y": 13.5,
    "w": 46.4
+  },
+  "eyes": {
+   "src": "assets/avatars/bits/krake_eyes.png",
+   "x": 39.28,
+   "y": 19.28,
+   "w": 32.51,
+   "h": 26.99
   }
  },
  {
@@ -141,6 +215,43 @@
    "x": 54,
    "y": 19.5,
    "w": 47
-  }
+  },
+  "bits": [
+   {
+    "src": "assets/avatars/bits/golem_1.png",
+    "x": 79.11,
+    "y": 8.16,
+    "w": 14.44,
+    "h": 16.58
+   },
+   {
+    "src": "assets/avatars/bits/golem_2.png",
+    "x": 18.67,
+    "y": 11.73,
+    "w": 7.56,
+    "h": 7.14
+   },
+   {
+    "src": "assets/avatars/bits/golem_3.png",
+    "x": 8.44,
+    "y": 21.17,
+    "w": 12.67,
+    "h": 12.76
+   },
+   {
+    "src": "assets/avatars/bits/golem_4.png",
+    "x": 88.44,
+    "y": 77.81,
+    "w": 10.22,
+    "h": 11.22
+   },
+   {
+    "src": "assets/avatars/bits/golem_5.png",
+    "x": 0.89,
+    "y": 80.1,
+    "w": 10.22,
+    "h": 9.69
+   }
+  ]
  }
 ]

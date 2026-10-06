@@ -1081,3 +1081,49 @@ body.drop-ready .table-surface { box-shadow: 0 0 0 1.2cqw rgba(110,230,140,.8), 
 @keyframes av-glow { 0%,100% { opacity: .15; } 35% { opacity: .85; } 60% { opacity: .45; } 80% { opacity: .75; } }
 @keyframes av-rise { 0%,100% { background-position: 0 4%, 3% 8%, -3% 5%; } 50% { background-position: 0 -6%, -4% -10%, 4% -8%; } }
 @media (prefers-reduced-motion: reduce) { .av-feuer .fb::after { animation: none; opacity: .4; } }
+
+/* ---------- Einzigartiges je Avatar: lose Teile + Partikel ---------- */
+.fig .bit { position: absolute; z-index: 1; pointer-events: none; object-fit: fill; filter: drop-shadow(0 3px 3px rgba(0,0,0,.4));
+  animation: av-bit var(--bt, 5s) ease-in-out var(--bd, 0s) infinite; --amp: 1; }
+.board .fig { --amp: .45; }
+@keyframes av-bit {
+  0%,100% { translate: 0 0; rotate: 0deg; }
+  25% { translate: calc(var(--ax) * var(--amp)) calc(var(--ay) * var(--amp) * -.6); rotate: calc(var(--ar) * var(--amp)); }
+  50% { translate: 0 calc(var(--ay) * var(--amp) * -1); rotate: 0deg; }
+  75% { translate: calc(var(--ax) * var(--amp) * -1) calc(var(--ay) * var(--amp) * -.4); rotate: calc(var(--ar) * var(--amp) * -1); }
+}
+.fig .fx { position: absolute; inset: 0; z-index: 1; pointer-events: none; overflow: visible; }
+.fig .fx i { position: absolute; left: var(--x); bottom: 55%; width: var(--sz); aspect-ratio: 1; opacity: 0; font-style: normal; line-height: 1;
+  font-size: calc(var(--sz) * 1.5); text-align: center; animation: fx-rise 6s linear var(--dl, 0s) infinite; }
+.fx.spark i { border-radius: 50%; background: radial-gradient(circle, #fff3b0 0 30%, #ffb02e 60%, transparent 72%); box-shadow: 0 0 6px 1px rgba(255,160,40,.7); }
+.fx.bubble i { border-radius: 50%; border: 1.2px solid rgba(220,245,255,.8); background: radial-gradient(circle at 30% 30%, rgba(255,255,255,.7), rgba(180,225,255,.15) 55%); animation-duration: 5s; }
+.fx.snow i { border-radius: 50%; background: #fff; bottom: auto; top: 6%; box-shadow: 0 0 5px rgba(255,255,255,.8); animation-name: fx-fall; animation-duration: 6s; }
+.fx.heart i { color: #ff8fc6; text-shadow: 0 0 6px rgba(255,120,190,.8); animation-duration: 6s; }
+.fx.star i { color: #fff6bf; text-shadow: 0 0 7px rgba(255,240,150,.9); bottom: auto; top: calc(8% + var(--x) * .6); animation-name: fx-twinkle; animation-duration: 3s; }
+.fx.smoke i { border-radius: 50%; background: radial-gradient(circle, rgba(120,80,190,.55), transparent 70%); filter: blur(1.5px); width: calc(var(--sz) * 3); animation-duration: 6s; animation-name: fx-smoke; }
+@keyframes fx-rise { 0% { translate: 0 0; opacity: 0; scale: .6; } 15% { opacity: .95; } 100% { translate: var(--dx) -30cqmin; opacity: 0; scale: 1; } }
+@keyframes fx-fall { 0% { translate: 0 0; opacity: 0; } 15% { opacity: .9; } 100% { translate: var(--dx) 28cqmin; opacity: 0; } }
+@keyframes fx-twinkle { 0%,100% { opacity: 0; scale: .4; rotate: 0deg; } 50% { opacity: 1; scale: 1.1; rotate: 25deg; } }
+@keyframes fx-smoke { 0% { translate: 0 0; opacity: 0; scale: .6; } 25% { opacity: .8; } 100% { translate: var(--dx) -22cqmin; opacity: 0; scale: 1.8; } }
+.board .fig .fx { opacity: .55; }
+.me-bust .fig .fx, .me-bust .fig .bit { display: none; }
+@media (prefers-reduced-motion: reduce) { .fig .bit, .fig .fx i { animation: none !important; } .fig .fx { display: none; } }
+
+/* Augen: schauen ab und zu woanders hin, blinzeln; Pinguin zwinkert */
+.fig .eyes, .fig .wink { position: absolute; z-index: 1; pointer-events: none; object-fit: fill; transform-origin: 50% 50%; }
+.fig .eyes { animation: av-look 12s ease-in-out var(--d, 0s) infinite; }
+.av-geist .eyes { animation-duration: 15s; } .av-krake .eyes { animation-duration: 10s; } .av-schleim .eyes { animation-duration: 20s; }
+@keyframes av-look {
+  0%,38%,100% { translate: 0 0; scale: 1 1; }
+  40% { scale: 1 .08; } 42% { scale: 1 1; }
+  52%,66% { translate: 1.5cqmin -.3cqmin; }
+  72%,86% { translate: -1.5cqmin .4cqmin; }
+  93% { translate: 0 0; }
+}
+.fig .wink { animation: av-wink 10s ease-in-out var(--d, 0s) infinite; }
+@keyframes av-wink { 0%,84%,100% { scale: 1 1; } 87%,93% { scale: 1.1 .12; } }
+.fig .wstar { position: absolute; z-index: 2; pointer-events: none; font-style: normal; font-size: 5.5cqmin; color: #fff6bf; text-shadow: 0 0 6px #ffe680; opacity: 0;
+  animation: av-wstar 10s ease-in-out var(--d, 0s) infinite; }
+@keyframes av-wstar { 0%,86%,100% { opacity: 0; scale: .3; } 90% { opacity: 1; scale: 1.1; rotate: 20deg; } 95% { opacity: 0; scale: .5; } }
+.me-bust .fig .eyes, .me-bust .fig .wink, .me-bust .fig .wstar { animation: none; }
+@media (prefers-reduced-motion: reduce) { .fig .eyes, .fig .wink, .fig .wstar { animation: none !important; } }
