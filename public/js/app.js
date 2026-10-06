@@ -129,7 +129,7 @@
       const ay = (big ? 3.4 + (i % 2) * 2 : 2.2 + (i % 2)).toFixed(1);
       const ar = ((i % 2 ? -1 : 1) * (big ? 10 + i * 3 : 5)).toFixed(0);
       const dur = [5, 6, 4, 6, 5][i % 5];
-      return `<img class="bit ${esc(b.kind || '')}" src="${esc(b.src)}" alt="" draggable="false" style="--dir:${i % 2 ? 'reverse' : 'normal'};left:${b.x}%;top:${b.y}%;width:${b.w}%;height:${b.h}%;--ax:${ax}cqmin;--ay:${ay}cqmin;--ar:${ar}deg;--bt:${dur}s;--bd:-${(now + i * 1.7).toFixed(2)}s">`;
+      return `<img class="bit ${esc(b.kind || '')}" src="${esc(b.src)}" alt="" draggable="false" style="--dir:${i % 2 ? 'reverse' : 'normal'};${b.origin ? `transform-origin:${b.origin};` : ''}left:${b.x}%;top:${b.y}%;width:${b.w}%;height:${b.h}%;--ax:${ax}cqmin;--ay:${ay}cqmin;--ar:${ar}deg;--bt:${dur}s;--bd:-${(now + i * 1.7).toFixed(2)}s">`;
     }).join('');
   }
   const glowHTML = (a) => [].concat(a.glow || []).map((g, i) => `<i class="orb" style="left:${g.x}%;top:${g.y}%;width:${g.s}%;animation-delay:-${(((Date.now() / 1000) % 60) + i * 1.2).toFixed(2)}s"></i>`).join('');

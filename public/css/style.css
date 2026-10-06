@@ -1202,3 +1202,13 @@ body.drop-ready .table-surface { box-shadow: 0 0 0 1.2cqw rgba(110,230,140,.8), 
 .ad-btn:disabled { opacity: .45; cursor: default; }
 .ad-demo { position: fixed; inset: 0; z-index: 99; display: grid; place-items: center; background: rgba(8,5,3,.92); color: #fff; text-align: center; font: 700 18px system-ui, sans-serif; }
 .ad-demo p { font-size: 28px; margin: 8px 0 14px; }
+
+/* Faultier: Arme wabbeln sanft hoch und runter */
+.av-faultier .fb { animation-name: av-breathe; animation-duration: 6s; }
+.fig .bit.arm { filter: none; z-index: 2; animation: av-arm 3.4s ease-in-out var(--bd, 0s) infinite; }
+.fig .bit.arm:nth-of-type(2n) { animation-delay: calc(var(--bd, 0s) - 1.1s); }
+@keyframes av-arm { 0%, 100% { rotate: -7deg; } 50% { rotate: 7deg; } }
+.board .fig .bit.arm { animation-duration: 4.6s; }
+@keyframes av-arm-r { 0%, 100% { rotate: 7deg; } 50% { rotate: -7deg; } }
+.fig .bit.arm + .bit.arm { animation-name: av-arm-r; }
+@media (prefers-reduced-motion: reduce) { .fig .bit.arm { animation: none !important; } }

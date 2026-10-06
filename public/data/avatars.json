@@ -401,5 +401,38 @@
     "s": 11
    }
   ]
+ },
+ {
+  "id": "faultier",
+  "name": "Faultier",
+  "emoji": "🦥",
+  "color": "#a58bc4",
+  "ar": 1.023,
+  "hat": {
+   "x": 51,
+   "y": 13,
+   "w": 44
+  },
+  "price": 4500,
+  "bits": [
+   {
+    "src": "assets/avatars/bits/faultier_1.png",
+    "x": 0.0,
+    "y": 42.23,
+    "w": 30.4,
+    "h": 18.55,
+    "kind": "arm",
+    "origin": "100% 63%"
+   },
+   {
+    "src": "assets/avatars/bits/faultier_2.png",
+    "x": 71.68,
+    "y": 37.1,
+    "w": 28.32,
+    "h": 22.97,
+    "kind": "arm",
+    "origin": "-8% 69%"
+   }
+  ]
  }
 ]
