@@ -1189,3 +1189,6 @@ body.drop-ready .table-surface { box-shadow: 0 0 0 1.2cqw rgba(110,230,140,.8), 
 .s3-plate.w3 { border-width: 3px; box-shadow: 0 0 14px rgba(217,83,79,.9); }
 .board .s3.opp .s3-plate .nm { max-width: 18cqw; }
 .s3.turn .s3-plate.good { border-color: #4fb06a; } .s3.turn .s3-plate.bad { border-color: #d9534f; }
+/* Einheitliche Kachel-Schrift (Lobby, Ranked, Beitreten) */
+.tile-big.join b { font-size: 22px; color: #fff; -webkit-text-stroke: 1.4px #1d0f4d; paint-order: stroke fill; text-shadow: 0 3px 0 #1d0f4d; text-transform: uppercase; }
+.tile-big.join small { font-size: 12.5px; }
