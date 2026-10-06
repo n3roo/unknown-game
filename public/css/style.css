@@ -1027,36 +1027,34 @@ body.drop-ready .table-surface { box-shadow: 0 0 0 1.2cqw rgba(110,230,140,.8), 
 .board .deck { top: 80cqw; right: 3cqw; }
 .ticker { top: 84cqw; }
 
-/* ---------- Avatar-Animationen (Idle je Figur, lebendiger am Zug) ---------- */
-.fig .fb { transform-origin: 50% 100%; animation: av-breathe var(--t, 3.4s) ease-in-out var(--d, 0s) infinite; will-change: translate, scale, rotate; }
+/* ---------- Avatar-Animationen (sanft; Phase hängt an der Uhrzeit, damit ein Neuzeichnen nichts ruckeln lässt) ---------- */
+.fig .fb { transform-origin: 50% 100%; animation: av-breathe 4s ease-in-out var(--d, 0s) infinite; will-change: translate, scale, rotate; }
 .me-bust .fig .fb { animation: none; }
-@keyframes av-breathe { 0%,100% { scale: 1 1; } 50% { scale: 1.015 1.035; } }
-@keyframes av-bob { 0%,100% { translate: 0 0; } 50% { translate: 0 -3.5%; } }
-@keyframes av-sway { 0%,100% { rotate: -2.2deg; } 50% { rotate: 2.2deg; } }
-@keyframes av-hop { 0%,55%,100% { translate: 0 0; scale: 1 1; } 62% { translate: 0 0; scale: 1.06 .93; } 78% { translate: 0 -9%; scale: .97 1.05; } 90% { translate: 0 0; scale: 1.05 .94; } }
-@keyframes av-jelly { 0%,100% { scale: 1 1; } 30% { scale: 1.06 .94; } 60% { scale: .96 1.05; } }
-@keyframes av-float { 0%,100% { translate: 0 0; rotate: -1.5deg; } 50% { translate: 0 -5%; rotate: 1.5deg; } }
-@keyframes av-flicker { 0%,100% { scale: 1 1; filter: brightness(1); } 25% { scale: 1.02 1.04; filter: brightness(1.12); } 50% { scale: .99 1.02; filter: brightness(.96); } 75% { scale: 1.015 1.05; filter: brightness(1.08); } }
-@keyframes av-wobble { 0%,100% { rotate: 0deg; scale: 1 1; } 25% { rotate: -2.5deg; scale: 1.02 .98; } 75% { rotate: 2.5deg; scale: .98 1.02; } }
-@keyframes av-shiver { 0%,86%,100% { translate: 0 0; } 88% { translate: -1.2% 0; } 91% { translate: 1.2% 0; } 94% { translate: -.8% 0; } 97% { translate: .8% 0; } }
-@keyframes av-heavy { 0%,100% { scale: 1 1; translate: 0 0; } 50% { scale: 1.012 1.025; translate: 0 -.8%; } }
+@keyframes av-breathe { 0%,100% { scale: 1 1; } 50% { scale: 1.012 1.03; } }
+@keyframes av-bob { 0%,100% { translate: 0 0; } 50% { translate: 0 -3%; } }
+@keyframes av-sway { 0%,100% { rotate: -2deg; } 50% { rotate: 2deg; } }
+@keyframes av-happy { 0%,100% { rotate: -2.2deg; translate: 0 0; scale: 1 1; } 50% { rotate: 2.2deg; translate: 0 -2.6%; scale: 1.015 1.03; } }
+@keyframes av-jelly { 0%,100% { scale: 1 1; } 50% { scale: 1.035 .965; } }
+@keyframes av-float { 0%,100% { translate: 0 0; rotate: -1.2deg; } 50% { translate: 0 -4%; rotate: 1.2deg; } }
+@keyframes av-flicker { 0%,100% { scale: 1 1; filter: brightness(1); } 50% { scale: 1.01 1.025; filter: brightness(1.05); } }
+@keyframes av-wobble { 0%,100% { rotate: -1.6deg; scale: 1 1; } 50% { rotate: 1.6deg; scale: 1.015 1.02; } }
+@keyframes av-shiver { 0%,88%,100% { translate: 0 0; } 90% { translate: -1% 0; } 93% { translate: 1% 0; } 96% { translate: -.6% 0; } }
+@keyframes av-heavy { 0%,100% { scale: 1 1; translate: 0 0; } 50% { scale: 1.01 1.022; translate: 0 -.7%; } }
 
-.av-alien .fb { --t: 2.8s; animation-name: av-bob, av-sway; animation-duration: 2.8s, 4.2s; }
-.av-feuer .fb { --t: 1.1s; animation-name: av-flicker; animation-duration: 1.2s; }
-.av-geist .fb { animation-name: av-float; animation-duration: 3.6s; }
-.av-golem .fb { animation-name: av-heavy; animation-duration: 4.4s; }
-.av-hai .fb { animation-name: av-sway, av-breathe; animation-duration: 3.2s, 3.2s; }
-.av-hase .fb { animation-name: av-hop; animation-duration: 3.6s; }
-.av-krake .fb { animation-name: av-wobble; animation-duration: 3s; }
-.av-pinguin .fb { animation-name: av-sway, av-bob; animation-duration: 1.9s, .95s; }
-.av-schatten .fb { animation-name: av-breathe, av-shiver; animation-duration: 3.8s, 5.5s; }
-.av-schleim .fb { animation-name: av-jelly; animation-duration: 2.2s; }
-.av-teufel .fb { animation-name: av-breathe, av-shiver; animation-duration: 2.6s, 3.8s; }
-.av-weiss .fb { animation-name: av-bob; animation-duration: 2.6s; }
+.av-alien .fb { animation-name: av-bob, av-sway; animation-duration: 3s, 5s; }
+.av-feuer .fb { animation-name: av-flicker; animation-duration: 3s; }
+.av-geist .fb { animation-name: av-float; animation-duration: 6s; }
+.av-golem .fb { animation-name: av-heavy; animation-duration: 5s; }
+.av-hai .fb { animation-name: av-sway, av-breathe; animation-duration: 4s, 4s; }
+.av-hase .fb { animation-name: av-happy; animation-duration: 4s; }
+.av-krake .fb { animation-name: av-wobble; animation-duration: 5s; }
+.av-pinguin .fb { animation-name: av-sway, av-bob; animation-duration: 2s, 1s; }
+.av-schatten .fb { animation-name: av-breathe, av-shiver; animation-duration: 4s, 6s; }
+.av-schleim .fb { animation-name: av-jelly; animation-duration: 4s; }
+.av-teufel .fb { animation-name: av-breathe, av-shiver; animation-duration: 3s, 4s; }
+.av-weiss .fb { animation-name: av-bob; animation-duration: 3s; }
 .fig .fb { animation-delay: var(--d, 0s); animation-timing-function: ease-in-out; }
 
-/* Wer am Zug ist, ist deutlich lebhafter */
-.s3.turn .fig .fb { animation-duration: .85s !important; }
-.s3.turn.opp .fig .fb { animation-name: av-hop !important; }
-.s3.turn .fig.av-feuer .fb { animation-name: av-flicker !important; animation-duration: .6s !important; }
+/* Wer am Zug ist: etwas lebhafter, aber weiterhin weich */
+.s3.turn .fig .fb { animation-name: av-bob, av-sway !important; animation-duration: 1.5s, 3s !important; }
 @media (prefers-reduced-motion: reduce) { .fig .fb { animation: none !important; } }

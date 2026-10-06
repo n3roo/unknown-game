@@ -120,7 +120,7 @@
   }
   function figHTML(id, cls = '', hat = null) {
     const a = avatarDef(id);
-    return `<span class="fig av-${esc(a.id)} ${cls}"><span class="fb" style="--ar:${a.ar || 1};--d:-${(Math.random() * 5).toFixed(2)}s"><img src="assets/avatars/${esc(a.id)}_cut.png" alt="${esc(a.name)}" data-e="${a.emoji}" onerror="this.replaceWith(Object.assign(document.createElement('b'),{textContent:this.dataset.e,className:'emo'}))">${hatHTML(a, hat)}</span></span>`;
+    return `<span class="fig av-${esc(a.id)} ${cls}"><span class="fb" style="--ar:${a.ar || 1};--d:-${((Date.now() / 1000) % 60).toFixed(2)}s"><img src="assets/avatars/${esc(a.id)}_cut.png" alt="${esc(a.name)}" data-e="${a.emoji}" onerror="this.replaceWith(Object.assign(document.createElement('b'),{textContent:this.dataset.e,className:'emo'}))">${hatHTML(a, hat)}</span></span>`;
   }
   const LOGO = (cls = '') => `<img class="logo-img ${cls}" src="assets/logo.png" alt="UNKNOWN" draggable="false">`;
   function avatarPicker(selected, taken = []) {
