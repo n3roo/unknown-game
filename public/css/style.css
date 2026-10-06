@@ -951,3 +951,9 @@ body.drop-ready .table-surface { box-shadow: 0 0 0 1.2cqw rgba(110,230,140,.8), 
 .fig .hat img { transform: scale(var(--hs, 1.25)); }
 
 .fig .hat, .fig .hat.crown { transform: translate(-50%, calc(var(--hk, 85%) * -1)); }
+
+/* Topbar: Logo schrumpft statt zu überlappen; auf schmalen Handys entfällt es */
+.game-app .topbar .grow { flex: 1 1 0; min-width: 0; overflow: hidden; display: flex; justify-content: center; }
+.game-app .logo-img.tb { width: auto; max-width: 100%; object-fit: contain; }
+.game-app .topbar .chip { flex: none; }
+@media (max-width: 400px) { .game-app .topbar .grow { visibility: hidden; } }
