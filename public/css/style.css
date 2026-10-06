@@ -941,3 +941,7 @@ body.dragging .hand .slot-card.sel { opacity: .25; transform: none; }
 body.dragging .table-surface { box-shadow: 0 0 0 .8cqw rgba(255,200,100,.35), 0 0 6cqw rgba(255,190,90,.45); }
 body.drop-ready .table-surface { box-shadow: 0 0 0 1.2cqw rgba(110,230,140,.8), 0 0 9cqw rgba(110,230,140,.6); }
 @media (prefers-reduced-motion: reduce) { .pill-btn.pulse { animation: none; } }
+
+/* Gemalte Hüte sitzen tiefer auf dem Kopf (Rand überdeckt die Kopfoberkante) */
+.fig .hat { transform: translate(-50%, -86%); }
+.fig .hat.crown { transform: translate(-50%, -78%); }

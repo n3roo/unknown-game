@@ -116,7 +116,7 @@
   function hatHTML(av, hat) {
     if (!hat || !window.HATS || !window.HATS[hat] || !av.hat) return '';
     const h = av.hat;
-    return `<span class="hat" style="left:${h.x}%;top:${h.y}%;width:${h.w}%">${window.HATS[hat]}</span>`;
+    return `<span class="hat ${/krone|liga_/.test(hat) ? 'crown' : ''}" style="left:${h.x}%;top:${h.y}%;width:${h.w}%">${window.HATS[hat]}</span>`;
   }
   function figHTML(id, cls = '', hat = null) {
     const a = avatarDef(id);
