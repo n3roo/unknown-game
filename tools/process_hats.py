@@ -35,6 +35,17 @@ for i,id_ in enumerate(ORDER):
     keep = np.asarray(full).copy(); keep[...,3] = np.where(m, keep[...,3], 0)
     out[id_] = Image.fromarray(keep,'RGBA').crop(bb)
 out['liga_platin'] = tint(out['liga_silber'], -24, 1.6)   # fehlt im Raster: Silberkrone türkis eingefärbt
+# Unteren (hinteren) Innenrand wegschneiden, damit der Hut auf dem Kopf zu sitzen scheint: Anteil der Hutbreite/-höhe, Rand als Lächeln
+CUT = {'koch': 0.10, 'fez': 0.06, 'muetze': 0.04, 'partyhut': 0.05, 'zauberer': 0.05, 'basecap': 0.0, 'cowboy': 0.0, 'pirat': 0.0, 'zylinder': 0.0, 'propeller': 0.04, 'wikinger': 0.05,
+       'krone': 0.07, 'liga_silber': 0.07, 'liga_gold': 0.07, 'liga_platin': 0.07, 'liga_diamant': 0.07, 'liga_meister': 0.07}
+def smile_cut(img, frac):
+    if frac <= 0: return img
+    a = np.asarray(img).copy(); H, W2 = a.shape[:2]
+    ys = np.arange(H)[:, None]; xs = np.linspace(-1, 1, W2)[None, :]
+    edge = H * (1 - frac * (0.35 + 0.65 * xs ** 2))
+    a[..., 3] = np.where(ys > edge, 0, a[..., 3])
+    out = Image.fromarray(a, 'RGBA'); return out.crop(out.split()[3].getbbox())
+for k in out: out[k] = smile_cut(out[k], CUT.get(k, 0))
 CW,CH = 400,280
 for id_,hat in out.items():
     s = min(CW/hat.width, CH*0.94/hat.height); hat = hat.resize((max(1,int(hat.width*s)),max(1,int(hat.height*s))), Image.LANCZOS)
