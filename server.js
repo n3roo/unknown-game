@@ -168,6 +168,11 @@ function settleIfFinished(room) {
   const entries = room.game.players
     .map((p) => ({ id: p.id, profile: p.profileId ? profiles.get(p.profileId) : null }))
     .filter((e) => e.profile);
+  // Dasselbe Profil mehrfach in einer Partie (zwei Tabs): keine Belohnung, sonst ließe sich Gold farmen.
+  if (new Set(entries.map((e) => e.profile.id)).size < entries.length) {
+    room.rewards = {};
+    return;
+  }
   room.rewards = E.settleGame({ entries, winnerId: room.game.winner, ranked: room.ranked });
   for (const e of entries) {
     saveProfile(e.profile);
@@ -568,8 +573,10 @@ const heartbeat = setInterval(() => {
     ws.ping();
   }
 }, 25000);
+heartbeat.unref();
 
 const matchTick = setInterval(() => { if (queue.size) runMatchmaking(); }, 2000);
+matchTick.unref();
 const janitor = setInterval(() => {
   const now = Date.now();
   for (const room of rooms.values()) {
@@ -586,6 +593,7 @@ const janitor = setInterval(() => {
     if (!anyone && now - room.lastActive > ROOM_IDLE_MS) rooms.delete(code);
   }
 }, 10 * 1000);
+janitor.unref();
 
 wss.on('close', () => {
   clearInterval(heartbeat);
