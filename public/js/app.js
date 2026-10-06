@@ -595,6 +595,7 @@
     stage.style.width = `${W / k}px`;
     stage.style.height = `${H / k}px`;
     stage.style.transform = k < 1 ? `scale(${k})` : 'none';
+    stage.style.setProperty('--ex', `${Math.max(0, (H / k - W * DESIGN_H) / W * 100).toFixed(1)}cqw`);
   }
   window.addEventListener('resize', fitBoard);
   window.addEventListener('orientationchange', () => setTimeout(fitBoard, 200));

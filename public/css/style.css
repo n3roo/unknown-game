@@ -897,3 +897,5 @@ button { touch-action: manipulation; }
 @media (prefers-reduced-motion: reduce) { .fx-banner, .confetti { display: none; } .last.fresh *, .hand.dealing .slot-card, .modal.enter, .modal.enter .sheet, .actions-row .btn { animation: none !important; } }
 /* Tisch ohne Verzerrung: natürliches Seitenverhältnis (Bild 1400x748) */
 .board .table-surface { left: -19cqw; width: 138cqw; height: 73.7cqw; top: 40cqw; background-size: 100% 100%; }
+/* Tisch tiefer: reicht bis unter die eigenen Stapel */
+.board .table-surface { left: -23cqw; width: 146cqw; top: 50cqw; height: calc(100cqw + var(--ex, 0cqw)); background-size: 100% 100%; }
