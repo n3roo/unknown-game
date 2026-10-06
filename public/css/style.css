@@ -1175,3 +1175,8 @@ body.drop-ready .table-surface { box-shadow: 0 0 0 1.2cqw rgba(110,230,140,.8), 
 .board .center { top: 85cqw; }
 .board .s3.opp.side .s3-fig { translate: 0 3.5cqw; }
 .board .s3.opp.mid .s3-fig { translate: 0 -3cqw; }
+
+/* Kleinerer Tisch, Figuren sitzen auf der Tischkante */
+.board .table-surface { width: 124cqw; margin-left: -62cqw; top: 48cqw; }
+.board .s3.opp.side .s3-fig { translate: 0 1cqw; }
+.board .s3.opp.mid .s3-fig { translate: 0 0; }
