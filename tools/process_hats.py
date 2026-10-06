@@ -47,6 +47,7 @@ def smile_cut(img, frac):
     out = Image.fromarray(a, 'RGBA'); return out.crop(out.split()[3].getbbox())
 if '--cut' in sys.argv:
     for k in out: out[k] = smile_cut(out[k], CUT.get(k, 0))  # nur für Raster mit sichtbarem Innenrand
+out['dev'] = tint(out['liga_meister'], 70, 1.3)            # Entwickler-Krone: Meisterkrone umgefärbt
 CW,CH = 400,280
 for id_,hat in out.items():
     s = min(CW/hat.width, CH*0.94/hat.height); hat = hat.resize((max(1,int(hat.width*s)),max(1,int(hat.height*s))), Image.LANCZOS)

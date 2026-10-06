@@ -89,6 +89,7 @@
     liga_gold: crown('g-lg', '#ffe066', '#d09a1c', '#e8323f', '#fff1a6'),
     liga_platin: crown('g-lp', '#c6f2ee', '#58b8b0', '#2fd9c8', '#ffffff'),
     liga_diamant: crown('g-ld', '#b4e6ff', '#3a8bd6', '#ffffff', '#7ad0ff'),
+    dev: crown('g-dv', '#7dffb0', '#16a05a', '#ffffff', '#00e0ff'),
     liga_meister: crown('g-lm', '#ff9ad8', '#8a2bd6', '#ffe066', '#ff5a5a'),
   };
 
@@ -98,9 +99,9 @@
   for (const id of Object.keys(HATS)) HATS[id] = img(id);
   /* Skalierung je Hut (Mützen mit schmaler Basis größer, damit sie den Kopf umschließen) */
   window.HAT_FIT = { basecap: 1.25, muetze: 1.4, partyhut: 1.35, koch: 1.4, cowboy: 1.15, fez: 1.35, zylinder: 1.3, propeller: 1.3, pirat: 1.2, wikinger: 1.3, zauberer: 1.4,
-    krone: 1.35, liga_silber: 1.35, liga_gold: 1.35, liga_platin: 1.35, liga_diamant: 1.35, liga_meister: 1.35 };
+    krone: 1.35, liga_silber: 1.35, liga_gold: 1.35, liga_platin: 1.35, liga_diamant: 1.35, liga_meister: 1.35, dev: 1.4 };
   /* Aufsetz-Tiefe je Hut in % der Hutbox (größer = sitzt höher): flache Böden (Koch, Zylinder, Fez) höher, Mützen tiefer */
   window.HAT_SINK = { koch: 92, zylinder: 90, fez: 90, partyhut: 86, zauberer: 86, muetze: 83, basecap: 85, propeller: 85, cowboy: 84, pirat: 84, wikinger: 86,
-    krone: 82, liga_silber: 82, liga_gold: 82, liga_platin: 82, liga_diamant: 82, liga_meister: 82 };
+    krone: 82, liga_silber: 82, liga_gold: 82, liga_platin: 82, liga_diamant: 82, liga_meister: 82, dev: 82 };
   window.HATS = HATS;
 })();

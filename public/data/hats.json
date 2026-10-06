@@ -14,5 +14,6 @@
   { "id": "liga_gold", "name": "Gold-Krone", "league": "gold" },
   { "id": "liga_platin", "name": "Platin-Krone", "league": "platin" },
   { "id": "liga_diamant", "name": "Diamant-Krone", "league": "diamant" },
+  { "id": "dev", "name": "Entwickler-Krone", "special": true },
   { "id": "liga_meister", "name": "Meister-Krone", "league": "meister" }
 ]

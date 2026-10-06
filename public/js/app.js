@@ -116,7 +116,7 @@
   function hatHTML(av, hat) {
     if (!hat || !window.HATS || !window.HATS[hat] || !av.hat) return '';
     const h = av.hat;
-    return `<span class="hat ${/krone|liga_/.test(hat) ? 'crown' : ''}" style="left:${h.x}%;top:${h.y}%;width:${h.w}%;--hs:${(window.HAT_FIT || {})[hat] || 1.25};--hk:${(window.HAT_SINK || {})[hat] || 85}%">${window.HATS[hat]}</span>`;
+    return `<span class="hat ${/krone|liga_|^dev$/.test(hat) ? 'crown' : ''}" style="left:${h.x}%;top:${h.y}%;width:${h.w}%;--hs:${(window.HAT_FIT || {})[hat] || 1.25};--hk:${(window.HAT_SINK || {})[hat] || 85}%">${window.HATS[hat]}</span>`;
   }
   function figHTML(id, cls = '', hat = null) {
     const a = avatarDef(id);
@@ -263,6 +263,7 @@
       case 'claimed':
         SFX.coin(); toast(`+${m.gold} Gold${m.kind === 'daily' ? ` · Serie ${m.streak}` : ''}`);
         break;
+      case 'toast': toast(m.message); break;
       case 'error':
         toast(m.message, true);
         break;
@@ -925,7 +926,7 @@
     return `<div class="wd-top"><h2 style="margin:0">Shop</h2><span class="gold-pill">🪙 ${me.gold}</span></div>
       <div class="wd-stage">${figHTML(me.avatar, 'wd-fig', prev)}</div>
       ${action}
-      <h3 style="margin:12px 0 6px">Hüte</h3><div class="hat-grid">${S.hatsDef.filter((h) => !h.league).map(item).join('')}</div>
+      <h3 style="margin:12px 0 6px">Hüte</h3><div class="hat-grid">${S.hatsDef.filter((h) => !h.league && !h.special).map(item).join('')}</div>
       <h3 style="margin:12px 0 6px">Liga-Hüte</h3><div class="hat-grid">${S.hatsDef.filter((h) => h.league).map(item).join('')}</div>
       <button class="btn" data-act="close">Schließen</button>`;
   }
@@ -944,6 +945,9 @@
       <p style="margin:14px 0 4px"><b>Konto wiederherstellen</b></p>
       <input id="in-restore" type="text" placeholder="Code einfügen" autocomplete="off" style="width:100%">
       <button class="btn ghost" data-act="restore">Wiederherstellen</button>
+      <p style="margin:14px 0 4px"><b>Entwickler-Code</b></p>
+      <input id="in-dev" type="password" placeholder="Nur für den Entwickler" autocomplete="off" style="width:100%">
+      <button class="btn ghost" data-act="devcode">Freischalten</button>
       <button class="btn" data-act="close">Schließen</button>`;
   }
 
@@ -1032,6 +1036,7 @@
     noop() {},
     ranked() { S.ui.modal = { type: 'ranked' }; renderModals(); },
     rankedjoin() { send({ type: 'rankedjoin' }); },
+    devcode() { const v = (document.getElementById('in-dev') || {}).value || ''; if (v) send({ type: 'devcode', code: v }); },
     botgame() { send({ type: 'botgame', bots: 2 }); },
     rankedleave() { send({ type: 'rankedleave' }); },
     rankedagain() { leaveNow(); S.ui.modal = { type: 'ranked' }; send({ type: 'rankedjoin' }); renderModals(); },

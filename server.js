@@ -409,6 +409,20 @@ const handlers = {
     sendProfile(ws);
   },
 
+  devcode(ws, msg) {
+    if (!ws.profile) return;
+    const want = process.env.DEV_CODE || '';
+    const got = String(msg.code ?? '');
+    const ok = want.length >= 6 && got.length === want.length && require('crypto').timingSafeEqual(Buffer.from(got), Buffer.from(want));
+    if (!ok) return send(ws, { type: 'error', message: 'Code falsch.' });
+    const p = ws.profile;
+    if (!p.hats.includes('dev')) p.hats.push('dev');
+    p.hat = 'dev';
+    saveProfile(p);
+    sendProfile(ws);
+    send(ws, { type: 'toast', message: 'Entwickler-Krone freigeschaltet 👑' });
+  },
+
   claimdaily(ws) {
     if (!ws.profile) return;
     const r = E.M.claimDaily(ws.profile);
