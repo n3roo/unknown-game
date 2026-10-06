@@ -1,4 +1,5 @@
 Fertig gemalte Karten fuer das Set "Wild West".
+(Stand: 21 Karten – Revolverheldin 0–6, Sheriff 7–13, Goldgraeberin 14–20)
 Dateiname: <Nummer>.webp  mit Nummer = Charakter*7 + Accessoire
 Charaktere: 0 Revolverheldin, 1 Sheriff, 2 Goldgraeberin, 3 Gefangener, 4 Banditin, 5 Saloonbesitzer, 6 Kopfgeldjaeger
 Accessoires: 0 Sombrero, 1 Zylinder, 2 Partyhut, 3 Sonnenbrille, 4 Kopfhoerer, 5 Kochmuetze, 6 Krone
