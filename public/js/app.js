@@ -340,6 +340,8 @@
     else renderGame();
     renderModals();
     renderDrawers();
+    renderPins();
+    renderLightbox();
   }
 
   function renderResume() {
@@ -831,6 +833,70 @@
       <button class="btn" data-act="close">Schließen</button>`;
   }
 
+  /* ---- Schwebende Stapel-Fenster: bleiben offen, verschiebbar, mehrere gleichzeitig ---- */
+  function pinHTML(pin) {
+    const p = byId(pin.pid);
+    if (!p) return '';
+    const row = (which, cls, title, count) => {
+      const cards = p[which];
+      const body = cards === null ? '<em>umgedreht</em>'
+        : cards.length === 0 ? '<em>noch leer</em>'
+          : `<div class="pin-cards">${cards.map((id) => `<button class="card-btn" data-act="zoom" data-id="${id}">${cardHTML(id)}</button>`).join('')}</div>`;
+      return `<div class="pin-row ${cls}"><b>${title} <span>${count}</span></b>${body}</div>`;
+    };
+    return `<div class="pin" data-pid="${esc(pin.pid)}" style="left:${pin.x}px;top:${pin.y}px">
+      <div class="pin-head"><span>${esc(p.name)}</span><button data-act="unpin" data-pid="${esc(pin.pid)}" aria-label="Schließen">✕</button></div>
+      <div class="pin-body">${row('related', 'yes', '✓ Passt', p.relatedCount)}${row('notRelated', 'no', '✕ Passt nicht', p.notRelatedCount)}</div></div>`;
+  }
+  function renderPins() {
+    let root = document.getElementById('pins-root');
+    if (!root) { document.body.insertAdjacentHTML('beforeend', '<div id="pins-root"></div>'); root = document.getElementById('pins-root'); }
+    const inGame = !!(S.st && S.st.phase !== 'lobby');
+    if (!inGame) S.ui.pins = [];
+    S.ui.pins = (S.ui.pins || []).filter((x) => byId(x.pid));
+    if (root.dataset.drag) return;
+    const keep = {};
+    root.querySelectorAll('.pin').forEach((el) => { keep[el.dataset.pid] = el.querySelector('.pin-body').scrollTop; });
+    root.innerHTML = S.ui.pins.map(pinHTML).join('');
+    root.querySelectorAll('.pin').forEach((el) => { if (keep[el.dataset.pid]) el.querySelector('.pin-body').scrollTop = keep[el.dataset.pid]; });
+  }
+  function renderLightbox() {
+    let root = document.getElementById('lightbox-root');
+    if (!root) { document.body.insertAdjacentHTML('beforeend', '<div id="lightbox-root"></div>'); root = document.getElementById('lightbox-root'); }
+    const id = S.ui.lightbox;
+    if (id === null || id === undefined) { root.innerHTML = ''; return; }
+    if (root.dataset.id === String(id) && root.innerHTML) return;
+    const f = feats(id);
+    root.dataset.id = String(id);
+    root.innerHTML = `<div class="lb" data-act="closezoom"><div class="lb-card">${cardHTML(id)}</div>
+      <p class="zoom-names"><b>${esc(f.c.name)}</b><br>${esc(f.a.name)} · ${esc(f.l.name)}</p><span class="lb-hint">Tippen zum Schließen</span></div>`;
+  }
+  (() => {
+    let d = null;
+    document.addEventListener('pointerdown', (e) => {
+      const h = e.target.closest('.pin-head');
+      if (!h || e.target.closest('button')) return;
+      const el = h.parentElement; const r = el.getBoundingClientRect();
+      d = { el, pid: el.dataset.pid, dx: e.clientX - r.left, dy: e.clientY - r.top };
+      document.getElementById('pins-root').dataset.drag = '1';
+      e.preventDefault();
+    });
+    document.addEventListener('pointermove', (e) => {
+      if (!d) return;
+      const w = d.el.offsetWidth; const h = d.el.offsetHeight;
+      const x = Math.max(4, Math.min(window.innerWidth - w - 4, e.clientX - d.dx));
+      const y = Math.max(4, Math.min(window.innerHeight - 44, e.clientY - d.dy));
+      d.el.style.left = `${x}px`; d.el.style.top = `${y}px`;
+    });
+    const end = () => {
+      if (!d) return;
+      const pin = (S.ui.pins || []).find((x) => x.pid === d.pid);
+      if (pin) { pin.x = parseFloat(d.el.style.left) || pin.x; pin.y = parseFloat(d.el.style.top) || pin.y; }
+      delete document.getElementById('pins-root').dataset.drag; d = null;
+    };
+    document.addEventListener('pointerup', end); document.addEventListener('pointercancel', end);
+  })();
+
   function pileHTML(pid) {
     const p = byId(pid);
     if (!p) return '<p>Spieler nicht gefunden.</p><button class="btn" data-act="close">Schließen</button>';
@@ -1158,7 +1224,7 @@
     S.leaving = true;
     send({ type: 'leave' });
     S.session = null; LS.del('unknown.session');
-    S.st = null; S.ui.modal = null; S.ui.sel = null; S.ui.hideEnd = false; S.ui.drawer = null; S.ui.marks = { c: {}, a: {}, l: {} };
+    S.st = null; S.ui.modal = null; S.ui.pins = []; S.ui.lightbox = null; S.ui.sel = null; S.ui.hideEnd = false; S.ui.drawer = null; S.ui.marks = { c: {}, a: {}, l: {} };
     render();
   }
 
@@ -1232,14 +1298,22 @@
       send({ type: 'guess', c: s.c, a: s.a, l: s.l });
       S.ui.modal = null; renderModals();
     },
-    pile(t) { S.ui.modal = { type: 'pile', pid: t.dataset.pid }; renderModals(); },
+    pile(t) {
+      const pid = t.dataset.pid; const pins = S.ui.pins || (S.ui.pins = []);
+      const i = pins.findIndex((x) => x.pid === pid);
+      if (i >= 0) pins.splice(i, 1);
+      else { const n = pins.length; pins.push({ pid, x: Math.max(6, Math.min(window.innerWidth - 320, 10 + n * 40)), y: Math.round(window.innerHeight * 0.2) + n * 130 }); }
+      renderPins();
+    },
+    unpin(t) { S.ui.pins = (S.ui.pins || []).filter((x) => x.pid !== t.dataset.pid); renderPins(); },
+    closezoom() { S.ui.lightbox = null; renderLightbox(); },
     opennotes() { setDrawer('notes'); },
     openoverview() { LS.set('unknown.ovseen', 1); setDrawer('overview'); },
     closedrawer() { setDrawer(null); },
     mark(t) { const m = S.ui.marks[t.dataset.k]; const v = t.dataset.v; m[v] = !m[v]; renderDrawers(); },
     clearmarks() { S.ui.marks = { c: {}, a: {}, l: {} }; renderDrawers(); },
-    zoomsel() { if (S.ui.sel !== null) { S.ui.modal = { type: 'zoom', id: S.ui.sel }; renderModals(); } },
-    zoom(t) { S.ui.modal = { type: 'zoom', id: Number(t.dataset.id) }; renderModals(); },
+    zoomsel() { if (S.ui.sel !== null) { S.ui.lightbox = S.ui.sel; renderLightbox(); } },
+    zoom(t) { S.ui.lightbox = Number(t.dataset.id); renderLightbox(); },
     flip(t) { send({ type: 'flip', pile: t.dataset.pile }); },
     rematch() { S.ui.marks = { c: {}, a: {}, l: {} }; send({ type: 'rematch' }); },
     noop() {},
