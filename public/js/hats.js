@@ -93,5 +93,8 @@
   };
 
   /* Position je Avatar (Prozent des Bildes): x/y = Kopfoberseite-Mitte, w = Hutbreite. Siehe avatars.json "hat". */
+  /* Gemalte Hüte (ChatGPT-Raster, via tools/process_hats.py) ersetzen die SVG-Platzhalter. */
+  const img = (id) => `<img src="assets/hats/${id}.webp" alt="" draggable="false" decoding="async">`;
+  for (const id of Object.keys(HATS)) HATS[id] = img(id);
   window.HATS = HATS;
 })();

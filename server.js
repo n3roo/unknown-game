@@ -310,11 +310,11 @@ const BOT_AFTER_MS = 15000; // so lange sucht Ranked, bevor es gegen Bots geht
 const botThink = () => 1100 + Math.random() * 1900;
 
 /** Neue Partie: ein Mensch gegen 1-3 Bots (Übungsrunde, keine Rangpunkte). */
-function createBotRoom(ws, nBots) {
+function createBotRoom(ws, nBots, easy = false) {
   const code = newRoomCode();
   const room = {
     code, game: G.createGame(null), setId: SETS[0], clients: new Map(), tokens: new Map(),
-    lastActive: Date.now(), ranked: false, vsBot: true, settled: false, rewards: null,
+    easyBots: easy, lastActive: Date.now(), ranked: false, vsBot: true, settled: false, rewards: null,
   };
   rooms.set(code, room);
   const p = ws.profile;
@@ -351,12 +351,12 @@ function botTick() {
     if (!room.game.players.some((q) => q.connected && !q.bot && !q.out)) continue;
     for (const bp of room.game.players) {
       if (!bp.bot) continue;
-      const d = B.decide(room.game, bp.id);
+      const d = B.decide(room.game, bp.id, Math.random, !!room.easyBots);
       if (!d) { bp.botReadyAt = null; continue; }
       if (!bp.botReadyAt) { bp.botReadyAt = now + botThink(); continue; }
       if (now < bp.botReadyAt) continue;
       bp.botReadyAt = null;
-      B.act(room.game, bp.id);
+      B.act(room.game, bp.id, Math.random, !!room.easyBots);
       room.lastActive = now;
       broadcast(room);
       break; // pro Durchlauf nur eine Aktion im Raum
@@ -467,7 +467,7 @@ const handlers = {
     if (!ws.profile) return send(ws, { type: 'error', message: 'Profil wird noch geladen.' });
     if (ws.ctx) return send(ws, { type: 'error', message: 'Du bist schon in einer Partie.' });
     const n = Math.max(1, Math.min(3, Number(msg.bots) || 2));
-    createBotRoom(ws, n);
+    createBotRoom(ws, n, true);
   },
 
   rankedleave(ws) {

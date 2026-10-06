@@ -602,7 +602,7 @@
         <button class="icon-btn" data-act="opennotes" aria-label="Hinweise und Verlauf">📋</button>
         <span class="grow">${S.open ? LOGO('tb') : '<span class="chip">Verbinde …</span>'}</span>
         <span class="chip" title="Lobby-Code">🔑 ${esc(S.code)}</span>
-        <button class="icon-btn" data-act="openoverview" aria-label="Übersichtskarte">🗂</button>
+        <button class="pill-btn ${LS.get('unknown.ovseen') ? '' : 'pulse'}" data-act="openoverview" aria-label="Übersichtskarte">🗂 Karte</button>
         <button class="icon-btn" data-act="rules" aria-label="Spielregeln">?</button>
         <button class="icon-btn" data-act="leavepage" aria-label="Spiel verlassen">⎋</button>
       </div>
@@ -1021,7 +1021,7 @@
     },
     pile(t) { S.ui.modal = { type: 'pile', pid: t.dataset.pid }; renderModals(); },
     opennotes() { setDrawer('notes'); },
-    openoverview() { setDrawer('overview'); },
+    openoverview() { LS.set('unknown.ovseen', 1); setDrawer('overview'); },
     closedrawer() { setDrawer(null); },
     mark(t) { const m = S.ui.marks[t.dataset.k]; const v = t.dataset.v; m[v] = !m[v]; renderDrawers(); },
     clearmarks() { S.ui.marks = { c: {}, a: {}, l: {} }; renderDrawers(); },
@@ -1060,6 +1060,56 @@
     },
     hideend() { S.ui.hideEnd = true; renderModals(); },
   };
+
+  /* ---- Karten per Drag & Drop auf den Tisch ziehen ---- */
+  let drag = null, suppressClick = 0;
+  function dragKind(id) {
+    const st = S.st; if (!st || !st.hand || !st.hand.includes(id)) return null;
+    const me = st.players[st.you];
+    if (st.phase === 'clues' && st.clue) return st.clue.allowed.includes(id) ? 'clue' : null;
+    if (st.phase === 'playing' && st.current === st.you && !st.pending && !me.out) return 'play';
+    return null;
+  }
+  function overTable(y) { const h = document.querySelector('.hand'); if (!h) return false; const r = h.getBoundingClientRect(); return y < r.top + r.height * 0.3; }
+  document.addEventListener('pointerdown', (e) => {
+    const c = e.target.closest && e.target.closest('.slot-card'); if (!c || drag || e.button) return;
+    drag = { id: Number(c.dataset.id), x: e.clientX, y: e.clientY, on: false, pid: e.pointerId, ghost: null, w: c.getBoundingClientRect().width, html: c.innerHTML };
+    drag.kind = dragKind(drag.id);
+  });
+  document.addEventListener('pointermove', (e) => {
+    if (!drag || e.pointerId !== drag.pid) return;
+    if (!drag.on) {
+      if (!drag.kind || Math.hypot(e.clientX - drag.x, e.clientY - drag.y) < 12) return;
+      drag.on = true;
+      try { document.documentElement.setPointerCapture(e.pointerId); } catch { /* egal */ }
+      const g = document.createElement('div'); g.className = 'drag-ghost'; g.style.width = drag.w * 1.15 + 'px'; g.innerHTML = drag.html;
+      document.body.appendChild(g); drag.ghost = g;
+      document.body.classList.add('dragging');
+      if (S.ui.sel !== drag.id) { S.ui.sel = drag.id; }
+      SFX.select();
+    }
+    e.preventDefault();
+    drag.ghost.style.transform = `translate(${e.clientX}px, ${e.clientY}px) translate(-50%, -62%) rotate(${Math.max(-12, Math.min(12, (e.clientX - drag.x) / 12))}deg)`;
+    const over = overTable(e.clientY);
+    document.body.classList.toggle('drop-ready', over);
+  }, { passive: false });
+  function endDrag(e, cancel) {
+    if (!drag || (e && e.pointerId !== drag.pid)) return;
+    const d = drag; drag = null;
+    document.body.classList.remove('dragging', 'drop-ready');
+    if (d.ghost) d.ghost.remove();
+    if (!d.on) return;
+    suppressClick = Date.now() + 350;
+    if (!cancel && overTable(e.clientY)) {
+      S.ui.sel = d.id;
+      if (d.kind === 'clue') actions.giveclue(); else actions.play();
+      SFX.select && SFX.select();
+    }
+    render();
+  }
+  document.addEventListener('pointerup', (e) => endDrag(e, false));
+  document.addEventListener('pointercancel', (e) => endDrag(e, true));
+  document.addEventListener('click', (e) => { if (Date.now() < suppressClick) { e.stopImmediatePropagation(); e.preventDefault(); } }, true);
 
   document.addEventListener('click', (e) => {
     const closer = e.target.closest('.modal');

@@ -921,3 +921,23 @@ button { touch-action: manipulation; }
 .dots i { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,.25); } .dots i.on { background: #e8a94a; width: 20px; border-radius: 6px; }
 
 .legal { text-align: center; font-size: 12px; opacity: .6; margin: 6px 0 14px; } .legal a { color: inherit; }
+
+/* gemalte Hüte */
+.fig .hat img { display: block; width: 100%; height: 100%; transform: scale(1.12); transform-origin: 50% 94%; }
+.mini-hat img, .hat-item .hi-svg img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.hat-item .hi-svg { width: 74px; height: 52px; }
+.mini-hat { width: 36px; height: 25px; }
+
+/* Übersichts-Button + Drag & Drop */
+.pill-btn { height: 36px; padding: 0 12px; border-radius: 18px; border: 0; font: 800 13px/1 inherit; font-family: inherit; color: #3a2208; cursor: pointer; flex: none;
+  background: linear-gradient(#ffd98a, #e8a94a); box-shadow: 0 2px 0 #9a6414, 0 4px 10px rgba(0,0,0,.4); white-space: nowrap; }
+.pill-btn:active { transform: translateY(1px) scale(.97); }
+.pill-btn.pulse { animation: pillpulse 1.6s ease-in-out infinite; }
+@keyframes pillpulse { 0%,100% { box-shadow: 0 2px 0 #9a6414, 0 0 0 0 rgba(255,200,100,.7); } 50% { box-shadow: 0 2px 0 #9a6414, 0 0 0 9px rgba(255,200,100,0); } }
+.hand .slot-card { touch-action: none; -webkit-user-select: none; user-select: none; }
+.drag-ghost { position: fixed; left: 0; top: 0; z-index: 999; pointer-events: none; filter: drop-shadow(0 14px 16px rgba(0,0,0,.6)); will-change: transform; }
+.drag-ghost .card { width: 100%; }
+body.dragging .hand .slot-card.sel { opacity: .25; transform: none; }
+body.dragging .table-surface { box-shadow: 0 0 0 .8cqw rgba(255,200,100,.35), 0 0 6cqw rgba(255,190,90,.45); }
+body.drop-ready .table-surface { box-shadow: 0 0 0 1.2cqw rgba(110,230,140,.8), 0 0 9cqw rgba(110,230,140,.6); }
+@media (prefers-reduced-motion: reduce) { .pill-btn.pulse { animation: none; } }
