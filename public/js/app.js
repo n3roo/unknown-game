@@ -890,7 +890,7 @@
     const keepScroll = $modal.querySelector('.sheet')?.scrollTop || 0;
     const mkey = html.slice(0, 40);
     const enter = S.lastModalKey !== mkey; S.lastModalKey = mkey;
-    $modal.innerHTML = `<div class="modal ${enter ? 'enter' : ''}" data-closable="${closable}" role="dialog" aria-modal="true"><div class="sheet">${html}</div></div>`;
+    $modal.innerHTML = `<div class="modal ${enter ? 'enter' : ''}" data-closable="${closable}" role="dialog" aria-modal="true"><div class="sheet">${closable ? '<button class="sheet-x" data-act="close" aria-label="Schließen">✕</button>' : ''}${html}</div></div>`;
     const sheet = $modal.querySelector('.sheet');
     if (sheet) sheet.scrollTop = keepScroll;
     if (ui.modal && ui.modal.type === 'account') mountGoogle();
