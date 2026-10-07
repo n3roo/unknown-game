@@ -280,8 +280,8 @@ function settleIfFinished(room) {
     room.rewards = {};
     return;
   }
-  room.rewards = E.settleGame({ entries, winnerId: room.game.winner, ranked: room.ranked, botGame: !!room.vsBot, chaos: room.game.mode === 'chaos' });
-  if (!room.vsBot) { // Bilanz gegen Freunde
+  room.rewards = E.settleGame({ entries, winnerId: room.game.winner, ranked: room.ranked, botGame: hasBots(room), chaos: room.game.mode === 'chaos' });
+  if (!hasBots(room)) { // Bilanz gegen Freunde
     const win = entries.find((e) => e.id === room.game.winner);
     if (win) FR.recordGame(win.profile, entries.filter((e) => e !== win).map((e) => e.profile));
   }
@@ -322,6 +322,8 @@ function tokenFor(room, playerId) {
   return null;
 }
 
+const hasBots = (room) => room.game.players.some((q) => q.bot);
+
 function dropPlayer(room, playerId) {
   penalizeLeaver(room, playerId);
   G.removePlayer(room.game, playerId);
@@ -332,7 +334,7 @@ function dropPlayer(room, playerId) {
     ws.ctx = null;
     ws.close(4001, 'Entfernt');
   }
-  if (room.game.players.length === 0 || (room.vsBot && !room.game.players.some((x) => !x.bot))) removeRoom(room.code);
+  if (room.game.players.length === 0 || (hasBots(room) && !room.game.players.some((x) => !x.bot))) removeRoom(room.code);
 }
 
 function joinOk(room, playerId, ws) {
@@ -447,8 +449,7 @@ function createBotRoom(ws, nBots, easy = false) {
   queueSockets.delete(p.id);
   send(ws, { type: 'queue', status: 'idle' });
   send(ws, { type: 'joined', code, playerId: humanId, token, vsBot: true });
-  G.startGame(room.game, humanId);
-  broadcast(room);
+  broadcast(room); // erst in der Lobby: Modus wählen, Bots hinzufügen oder entfernen, dann starten
   return room;
 }
 
@@ -456,7 +457,7 @@ function createBotRoom(ws, nBots, easy = false) {
 function botTick() {
   const now = Date.now();
   for (const room of rooms.values()) {
-    if (!room.vsBot || !['clues', 'playing'].includes(room.game.phase)) continue;
+    if (!hasBots(room) || !['clues', 'playing'].includes(room.game.phase)) continue;
     if (!room.game.players.some((q) => q.connected && !q.bot && !q.out)) continue;
     for (const bp of room.game.players) {
       if (!bp.bot) continue;
@@ -888,6 +889,22 @@ const handlers = {
     broadcast(room);
   },
 
+  /** Host holt einen Bot in die Lobby. */
+  addbot(ws, _msg, room, playerId) {
+    const g = room.game;
+    if (room.ranked) return send(ws, { type: 'error', message: 'In Ranked-Partien gibt es keine Bots.' });
+    if (playerId !== g.hostId) return send(ws, { type: 'error', message: 'Nur der Host kann Bots hinzufügen.' });
+    if (g.phase !== 'lobby') return send(ws, { type: 'error', message: 'Bots lassen sich nur in der Lobby hinzufügen.' });
+    if (g.players.length >= 4) return send(ws, { type: 'error', message: 'Die Lobby ist voll.' });
+    const names = B.BOT_NAMES.filter((n) => !g.players.some((q) => q.name === n));
+    const free = AVATARS.filter((a) => !g.players.some((q) => q.avatar === a));
+    const hats = [null, 'cowboy', 'zylinder', 'partyhut', 'basecap', 'koch'];
+    const r = G.addPlayer(g, { id: randomId(4), name: names[Math.floor(Math.random() * names.length)] || 'Bot', avatar: free[Math.floor(Math.random() * free.length)] || AVATARS[0], hat: hats[Math.floor(Math.random() * hats.length)], rating: null, region: null });
+    if (r && r.error) return send(ws, { type: 'error', message: r.error });
+    g.players[g.players.length - 1].bot = true;
+    broadcast(room);
+  },
+
   kick(ws, msg, room, playerId) {
     if (room.ranked) return send(ws, { type: 'error', message: 'In Ranked-Partien kann niemand entfernt werden.' });
     const target = room.game.players.find((p) => p.id === msg.id);
@@ -919,7 +936,7 @@ const handlers = {
 
   /** Host wählt in der Lobby Klassisch oder Chaos (und Blitz). */
   mode(ws, msg, room, playerId) {
-    if (room.ranked || room.vsBot) return send(ws, { type: 'error', message: 'In dieser Partie lässt sich der Modus nicht ändern.' });
+    if (room.ranked) return send(ws, { type: 'error', message: 'In dieser Partie lässt sich der Modus nicht ändern.' });
     act(ws, room, G.setMode(room.game, playerId, msg.mode, msg.blitz));
   },
 
@@ -954,7 +971,7 @@ function act(ws, room, result) {
   broadcast(room);
 }
 
-const NEEDS_ROOM = new Set(['start', 'clue', 'play', 'guess', 'flip', 'avatar', 'set', 'kick', 'rematch', 'rematchnow', 'mode', 'power', 'leave']);
+const NEEDS_ROOM = new Set(['start', 'clue', 'play', 'guess', 'flip', 'avatar', 'set', 'kick', 'rematch', 'rematchnow', 'mode', 'power', 'addbot', 'leave']);
 
 function onMessage(ws, raw) {
   const now = Date.now();

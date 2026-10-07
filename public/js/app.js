@@ -459,8 +459,8 @@
     }
     const canStart = isHost && st.players.length >= 2;
     const chaos = st.mode === 'chaos';
-    const canMode = isHost && !S.ranked && !st.players.some((p) => p.bot);
-    const modeHTML = S.ranked || st.players.some((p) => p.bot) ? '' : `
+    const canMode = isHost && !S.ranked;
+    const modeHTML = S.ranked ? '' : `
       <section class="panel stack"><h2>Modus</h2>
         <div class="row mode-row">
           <button class="btn ${chaos ? 'ghost' : 'primary'}" data-act="setmode" data-mode="classic" ${canMode ? '' : 'disabled'}>Klassisch</button>
@@ -478,7 +478,8 @@
         <p class="hint" style="margin:0">Set: ${esc(setDef().name)} · 2 bis 4 Spieler</p>
       </section>
       ${modeHTML}
-      <section class="panel"><h2>Spieler (${st.players.length}/4)</h2><div class="slots">${slots.join('')}</div></section>
+      <section class="panel stack"><h2>Spieler (${st.players.length}/4)</h2><div class="slots">${slots.join('')}</div>
+        ${isHost && !S.ranked && st.players.length < 4 ? '<button class="btn ghost" data-act="addbot">🤖 Bot hinzufügen</button>' : ''}</section>
       <section class="panel stack">
         <button class="btn ghost" data-act="toggleavatar">${S.ui.pickAvatar ? 'Avatar-Auswahl schließen' : 'Avatar ändern'}</button>
         ${S.ui.pickAvatar ? avatarPicker(me.avatar, st.players.map((p) => p.avatar)) : ''}
@@ -1493,6 +1494,7 @@
       S.wantPush = true; send({ type: 'pushkey' });
     },
     lbadd(t) { send({ type: 'friendadd', code: t.dataset.code }); setTimeout(() => send({ type: 'leaderboard', scope: S.ui.lbScope }), 500); },
+    addbot() { send({ type: 'addbot' }); },
     botgame() { send({ type: 'botgame', bots: 2 }); },
     rankedleave() { send({ type: 'rankedleave' }); },
     rankedagain() { leaveNow(); S.ui.modal = { type: 'ranked' }; send({ type: 'rankedjoin' }); renderModals(); },

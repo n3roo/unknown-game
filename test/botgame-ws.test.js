@@ -4,7 +4,7 @@ const assert = require('node:assert');
 const WebSocket = require('ws');
 const { server } = require('../server');
 
-test('Botspiel: startet, Bots handeln', async () => {
+test('Botspiel: Lobby, Bot hinzufügen, Chaos, Bots handeln', async () => {
   await new Promise((r) => server.listen(0, r));
   const ws = new WebSocket(`ws://localhost:${server.address().port}`);
   const msgs = [];
@@ -13,13 +13,23 @@ test('Botspiel: startet, Bots handeln', async () => {
   ws.send(JSON.stringify({ type: 'hello', secret: 'cd'.repeat(16), init: { name: 'Bottester', avatar: 'teufel', region: 'DE' } }));
   await new Promise((r) => setTimeout(r, 300));
   ws.send(JSON.stringify({ type: 'botgame', bots: 2 }));
+  await new Promise((r) => setTimeout(r, 500));
+  const lobby = msgs.filter((m) => m.type === 'state').pop().state;
+  assert.strictEqual(lobby.phase, 'lobby', 'Übungsrunde landet erst in der Lobby');
+  assert.strictEqual(lobby.players.length, 3);
+  ws.send(JSON.stringify({ type: 'addbot' }));
+  await new Promise((r) => setTimeout(r, 300));
+  assert.strictEqual(msgs.filter((m) => m.type === 'state').pop().state.players.length, 4, 'Bot hinzugefügt');
+  ws.send(JSON.stringify({ type: 'mode', mode: 'chaos', blitz: false }));
+  ws.send(JSON.stringify({ type: 'start' }));
   await new Promise((r) => setTimeout(r, 4000));
   const j = msgs.find((m) => m.type === 'joined');
   assert.ok(j && j.vsBot);
   const states = msgs.filter((m) => m.type === 'state');
   const last = states[states.length - 1].state;
-  assert.strictEqual(last.players.length, 3);
-  assert.strictEqual(last.players.filter((p) => p.bot).length, 2);
+  assert.strictEqual(last.players.length, 4);
+  assert.strictEqual(last.players.filter((p) => p.bot).length, 3);
+  assert.strictEqual(last.mode, 'chaos');
   assert.notStrictEqual(last.phase, 'lobby');
   const cluesGiven = last.players.filter((p) => p.bot && p.clueGiven).length;
   assert.ok(cluesGiven >= 1 || last.phase !== 'clues', 'Bots geben Hinweise');
