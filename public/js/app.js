@@ -1436,7 +1436,7 @@
       const pid = t.dataset.pid; const pins = S.ui.pins || (S.ui.pins = []);
       const i = pins.findIndex((x) => x.pid === pid);
       if (i >= 0) pins.splice(i, 1);
-      else { const n = pins.length; pins.push({ pid, x: Math.max(6, Math.min(window.innerWidth - 320, 10 + n * 40)), y: Math.round(window.innerHeight * 0.2) + n * 130 }); }
+      else { const n = pins.filter((x) => x.pid !== '__overview').length; pins.push({ pid, x: 6, y: Math.round(window.innerHeight * 0.12) + n * 150 }); }
       renderPins();
     },
     unpin(t) { S.ui.pins = (S.ui.pins || []).filter((x) => x.pid !== t.dataset.pid); renderPins(); },
@@ -1447,7 +1447,7 @@
       const pins = S.ui.pins || (S.ui.pins = []);
       const i = pins.findIndex((x) => x.pid === '__overview');
       if (i >= 0) pins.splice(i, 1);
-      else pins.push({ pid: '__overview', x: Math.max(6, window.innerWidth - 336), y: Math.round(window.innerHeight * 0.1) });
+      else pins.push({ pid: '__overview', x: Math.max(6, window.innerWidth - 268), y: Math.round(window.innerHeight * 0.1) });
       renderPins();
     },
     closedrawer() { setDrawer(null); },
