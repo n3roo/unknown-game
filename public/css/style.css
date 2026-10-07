@@ -1289,3 +1289,4 @@ button.pchip.ready.go { background: linear-gradient(180deg, #f2bb5e, #c88a2c); c
 
 .pin:not(.ov) .pin-cards { grid-template-columns: repeat(2, 1fr); }
 .pin:not(.ov) .pin-head { font-size: 13px; }
+.reveal .card-btn { width: min(100%, 104px); }
