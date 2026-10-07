@@ -51,7 +51,7 @@ test('Klassisch: keine Chaoskarten, Chaos: jeder bekommt zwei verschiedene', () 
   assert.ok(!JSON.stringify(v.players).includes('"chaos"'));
 });
 
-test('Chaoskarte nur im eigenen Zug und nur einmal, sie ersetzt den Zug', () => {
+test('Chaoskarte nur im eigenen Zug und nur einmal, sie kostet keinen Zug', () => {
   const g = chaosGame(3);
   const other = g.players[1];
   give(g, other.id, 'shield');
@@ -61,7 +61,10 @@ test('Chaoskarte nur im eigenen Zug und nur einmal, sie ersetzt den Zug', () => 
   assert.ok(G.useAction(g, me.id, 'block', 'p1').error, 'Karte nicht auf der Hand');
   assert.ok(G.useAction(g, me.id, 'shield').ok);
   assert.deepStrictEqual(me.chaos, ['oracle']);
-  assert.notStrictEqual(g.current, idx, 'Zug ist vorbei, wie bei einer normalen Karte');
+  assert.strictEqual(g.current, idx, 'Zug läuft weiter');
+  assert.ok(G.useAction(g, me.id, 'shield').error, 'jede Karte nur einmal');
+  assert.ok(G.useAction(g, me.id, 'oracle', null, seeded(1)).ok, 'mehrere Karten im selben Zug');
+  assert.deepStrictEqual(me.chaos, []);
 });
 
 test('Orakel verrät genau ein echtes Merkmal der eigenen Geheimkarte', () => {
@@ -89,7 +92,7 @@ test('Klauen: die Karte des Opfers wird sofort auf meine Stapel gelegt, mein Bla
   assert.strictEqual(victim.hand.length, 5, 'Opfer zieht nach');
   const ev = g.events.find((e) => e.type === 'power');
   assert.ok(placed.includes(ev.card));
-  assert.notStrictEqual(g.players[g.current].id, me.id);
+  assert.strictEqual(g.players[g.current].id, me.id, 'Zug läuft weiter');
 });
 
 test('Klauen und Sperre brauchen ein gültiges Ziel', () => {
@@ -109,6 +112,7 @@ test('Sperre überspringt den nächsten Zug des Ziels genau einmal', () => {
   const me = give(g, g.players[startIdx].id, 'block');
   const next = g.players[(startIdx + 1) % 3];
   assert.ok(G.useAction(g, me.id, 'block', next.id).ok);
+  G.playCard(g, me.id, me.hand[0]);
   const after = g.players[g.current];
   assert.strictEqual(after.id, g.players[(startIdx + 2) % 3].id, 'gesperrter Spieler wird übersprungen');
   assert.strictEqual(next.skip, false, 'Sperre ist verbraucht');
@@ -122,10 +126,11 @@ test('Sperre bei zwei Spielern: ich bin direkt nochmal dran', () => {
   const me = give(g, g.players[g.current].id, 'block');
   const opp = g.players.find((p) => p !== me);
   G.useAction(g, me.id, 'block', opp.id);
+  G.playCard(g, me.id, me.hand[0]);
   assert.strictEqual(g.players[g.current].id, me.id);
 });
 
-test('Doppelzug: danach darf ich genau zwei normale Karten ausspielen', () => {
+test('Doppelzug: ich darf genau zwei normale Karten ausspielen', () => {
   const g = chaosGame(3);
   const me = give(g, g.players[g.current].id, 'double');
   assert.ok(G.useAction(g, me.id, 'double').ok);
@@ -155,6 +160,7 @@ test('Schutzschild: ein falscher Tipp kostet nichts, danach wirkt er nicht mehr'
   const idx = g.current;
   const me = give(g, g.players[idx].id, 'shield');
   G.useAction(g, me.id, 'shield');
+  G.playCard(g, me.id, me.hand[0]);
   // Wieder an mir (zwei Runden später)
   G.playCard(g, g.players[g.current].id, g.players[g.current].hand[0]);
   G.playCard(g, g.players[g.current].id, g.players[g.current].hand[0]);

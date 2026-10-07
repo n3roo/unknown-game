@@ -466,7 +466,7 @@
           <button class="btn ${chaos ? 'ghost' : 'primary'}" data-act="setmode" data-mode="classic" ${canMode ? '' : 'disabled'}>Klassisch</button>
           <button class="btn ${chaos ? 'primary' : 'ghost'}" data-act="setmode" data-mode="chaos" ${canMode ? '' : 'disabled'}>Chaos ⚡</button>
         </div>
-        <p class="hint" style="margin:0">${chaos ? 'Jeder bekommt 2 geheime Chaoskarten als zweite Hand. Eine spielst du statt einer normalen Karte: 🔮 Orakel, 🧤 Klauen, ⛔ Sperre, ⚡ Doppelzug (danach 2 Karten) oder 🛡️ Schutzschild.' : 'Das normale Spiel ohne Extras.'}</p>
+        <p class="hint" style="margin:0">${chaos ? 'Jeder bekommt 2 geheime Chaoskarten als zweite Hand. Sie sind Gratis-Aktionen in deinem Zug: 🔮 Orakel, 🧤 Klauen, ⛔ Sperre, ⚡ Doppelzug (2 Karten in einem Zug) oder 🛡️ Schutzschild.' : 'Das normale Spiel ohne Extras.'}</p>
         <button class="btn ${st.blitz ? 'primary' : 'ghost'}" data-act="toggleblitz" ${canMode ? '' : 'disabled'}>⏱ Blitz: ${st.blitz ? 'an (25 s pro Zug)' : 'aus'}</button>
         ${canMode ? '' : '<p class="hint" style="margin:0">Nur der Host ändert den Modus.</p>'}
       </section>`;
@@ -683,7 +683,7 @@
     const d = POWER[kind];
     if (!pw || !d || !pw.cards.includes(kind)) return '<h2>Keine Chaoskarte</h2><button class="btn" data-act="close">Schließen</button>';
     const myTurn = st.current === st.you && !st.pending && !st.players[st.you].out;
-    let body = `<h2>${d.icon} ${d.name}</h2><p>${d.text}</p><p class="hint">Eine Chaoskarte spielst du statt einer normalen Karte, nur in deinem Zug.</p>`;
+    let body = `<h2>${d.icon} ${d.name}</h2><p>${d.text}</p><p class="hint">Chaoskarten sind Gratis-Aktionen: Du spielst sie nur in deinem Zug, danach geht es normal weiter.</p>`;
     if (!myTurn) return `${body}<p>Du bist gerade nicht dran.</p><button class="btn" data-act="close">Schließen</button>`;
     if (d.target) {
       const targets = st.players.filter((p, i) => i !== st.you && !p.out);
@@ -809,11 +809,11 @@
   /* ----------------------------------------------------- Modale */
 
   const POWER = {
-    oracle: { icon: '🔮', name: 'Orakel', text: 'Ersetzt deinen Zug: Du erfährst ein zufälliges Merkmal deiner Geheimkarte.', target: false },
-    steal: { icon: '🧤', name: 'Klauen', text: 'Ersetzt deinen Zug: Du nimmst einem Mitspieler eine zufällige Handkarte und legst sie sofort offen auf deine Stapel.', target: true },
-    block: { icon: '⛔', name: 'Sperre', text: 'Ersetzt deinen Zug: Ein Mitspieler muss seinen nächsten Zug aussetzen.', target: true },
-    double: { icon: '⚡', name: 'Doppelzug', text: 'Danach darfst du zwei Karten ausspielen (oder raten).', target: false },
-    shield: { icon: '🛡️', name: 'Schutzschild', text: 'Ersetzt deinen Zug: Dein nächster falscher Tipp kostet dich nichts.', target: false },
+    oracle: { icon: '🔮', name: 'Orakel', text: 'Kostet keinen Zug. Du erfährst ein zufälliges Merkmal deiner Geheimkarte.', target: false },
+    steal: { icon: '🧤', name: 'Klauen', text: 'Kostet keinen Zug. Du nimmst einem Mitspieler eine zufällige Handkarte und legst sie sofort offen auf deine Stapel.', target: true },
+    block: { icon: '⛔', name: 'Sperre', text: 'Kostet keinen Zug. Ein Mitspieler muss seinen nächsten Zug aussetzen.', target: true },
+    double: { icon: '⚡', name: 'Doppelzug', text: 'Du darfst in diesem Zug zwei Karten ausspielen (oder raten).', target: false },
+    shield: { icon: '🛡️', name: 'Schutzschild', text: 'Kostet keinen Zug. Dein nächster falscher Tipp kostet dich nichts.', target: false },
   };
 
   const RULES = `
@@ -826,7 +826,7 @@
       <li><b>Raten:</b> Mit dem 🎯-Knopf neben dem Stapel nennst du statt einer Karte Charakter, Accessoire und Ort. Alle drei müssen stimmen, dann gewinnst du sofort.</li>
       <li>Ein falscher Tipp dreht einen deiner Stapel um (beim ersten Fehler wählst du, beim zweiten der andere). Beim dritten Fehler bist du raus.</li>
       <li>Tipp: Karten der anderen schließen Möglichkeiten aus. Eine „passt nicht“-Karte streicht gleich drei Merkmale.</li>
-      <li><b>Chaos-Modus</b> (Host wählt ihn in der Lobby): Jeder bekommt 2 geheime Chaoskarten als zweite Hand. Im eigenen Zug spielst du eine davon statt einer normalen Karte: 🔮 Orakel, 🧤 Klauen (die geklaute Karte liegt sofort auf deinen Stapeln), ⛔ Sperre, ⚡ Doppelzug (danach darfst du 2 Karten ausspielen) oder 🛡️ Schutzschild. Ein ⚡ am Namen zeigt, dass jemand noch Chaoskarten hat.</li>
+      <li><b>Chaos-Modus</b> (Host wählt ihn in der Lobby): Jeder bekommt 2 geheime Chaoskarten als zweite Hand. Im eigenen Zug kannst du sie als Gratis-Aktion spielen, sie kosten keinen Zug: 🔮 Orakel, 🧤 Klauen (die geklaute Karte liegt sofort auf deinen Stapeln), ⛔ Sperre, ⚡ Doppelzug (du darfst 2 Karten ausspielen) oder 🛡️ Schutzschild. Ein ⚡ am Namen zeigt, dass jemand noch Chaoskarten hat.</li>
       <li><b>Blitz:</b> Pro Zug bleiben 25 Sekunden. Läuft die Zeit ab, wird automatisch eine Karte gespielt.</li>
     </ul>`;
 
