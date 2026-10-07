@@ -276,6 +276,7 @@
         if (new URLSearchParams(location.search).has('code')) history.replaceState(null, '', location.pathname);
         break;
       case 'state':
+        hideSplash();
         { const prev = S.st; S.st = m.state; S.turnEnd = m.state.turnMs != null ? Date.now() + m.state.turnMs : null; fxFor(prev, m.state, m); }
         if (m.state.phase === 'clues' && !LS.get('unknown.tutorial') && !S.ui.modal) S.ui.modal = { type: 'tutorial', page: 0 };
         S.code = m.code; S.setId = m.setId; S.ranked = !!m.ranked; S.rewards = m.rewards || null;
@@ -507,7 +508,7 @@
     if (hidden) face = backHTML();
     else if (cards && cards.length) face = cardHTML(cards[cards.length - 1]);
     else face = '<div class="ps-empty"></div>';
-    return `<button class="ps ${yes ? 'yes' : 'no'} ${hidden ? 'hid' : ''} ${count > 1 && !hidden ? 'multi' : ''}" data-act="${p.id === S.st.youId ? 'opennotes' : 'pile'}" data-pid="${esc(p.id)}" aria-label="${esc(p.name)}: ${yes ? 'passt' : 'passt nicht'}, ${count} Karten${hidden ? ', umgedreht' : ''}">
+    return `<button class="ps ${yes ? 'yes' : 'no'} ${hidden ? 'hid' : ''} ${count > 1 && !hidden ? 'multi' : ''}" data-act="pile" data-pid="${esc(p.id)}" aria-label="${esc(p.name)}: ${yes ? 'passt' : 'passt nicht'}, ${count} Karten${hidden ? ', umgedreht' : ''}">
       <span class="ps-card">${face}</span><span class="ps-n">${hidden ? '🔒 ' : ''}${count}</span></button>`;
   }
 
@@ -611,14 +612,14 @@
   }
 
   /** Übersichtskarte: alle Merkmale des Sets; Tippen streicht durch (nur für dich) */
-  function overviewHTML() {
+  function overviewHTML(compact = false) {
     const set = setDef();
     const sh = S.data.sets.shared;
     const m = S.ui.marks;
     const sec = (k, title, list, cls) => `<section class="ov-sec"><h3>${title}</h3><div class="ov-grid ${cls}">${list.map((it, i) =>
       `<button class="ov-item ${m[k][i] ? 'x' : ''}" data-act="mark" data-k="${k}" data-v="${i}" aria-pressed="${!!m[k][i]}">
         <span class="ov-img"><img src="${esc(k === 'c' ? it.cut : (k === 'a' ? it.cut : it.img))}" alt="" draggable="false"></span><span class="ov-name">${esc(it.name)}</span></button>`).join('')}</div></section>`;
-    return `<div class="dr-head"><h2>Übersichtskarte</h2><button class="dr-x" data-act="closedrawer" aria-label="Schließen">✕</button></div>
+    return `${compact ? '' : '<div class="dr-head"><h2>Übersichtskarte</h2><button class="dr-x" data-act="closedrawer" aria-label="Schließen">✕</button></div>'}
       <p class="muted dr-sub">Tippe auf ein Merkmal, um es für dich durchzustreichen.</p>
       ${sec('c', 'Charaktere', set.characters, 'ch')}${sec('a', 'Accessoires', sh.accessories, 'ac')}${sec('l', 'Orte', sh.locations, 'lo')}
       <button class="btn ghost" data-act="clearmarks">Streichungen zurücksetzen</button>`;
@@ -800,9 +801,8 @@
       const s = t0; t0 = null;
       if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.4) return;
       if (S.ui.drawer === 'notes' && dx < 0) setDrawer(null);
-      else if (S.ui.drawer === 'overview' && dx > 0) setDrawer(null);
       else if (!S.ui.drawer && s.edge === 'l' && dx > 0) setDrawer('notes');
-      else if (!S.ui.drawer && s.edge === 'r' && dx < 0) setDrawer('overview');
+      else if (!S.ui.drawer && s.edge === 'r' && dx < 0 && !(S.ui.pins || []).some((x) => x.pid === '__overview')) actions.openoverview();
     }, { passive: true });
   })();
 
@@ -913,6 +913,11 @@
 
   /* ---- Schwebende Stapel-Fenster: bleiben offen, verschiebbar, mehrere gleichzeitig ---- */
   function pinHTML(pin) {
+    if (pin.pid === '__overview') {
+      return `<div class="pin ov" data-pid="__overview" style="left:${pin.x}px;top:${pin.y}px">
+      <div class="pin-head"><span>Übersichtskarte</span><button data-act="unpin" data-pid="__overview" aria-label="Schließen">✕</button></div>
+      <div class="pin-body">${overviewHTML(true)}</div></div>`;
+    }
     const p = byId(pin.pid);
     if (!p) return '';
     const row = (which, cls, title, count) => {
@@ -923,7 +928,7 @@
       return `<div class="pin-row ${cls}"><b>${title} <span>${count}</span></b>${body}</div>`;
     };
     return `<div class="pin" data-pid="${esc(pin.pid)}" style="left:${pin.x}px;top:${pin.y}px">
-      <div class="pin-head"><span>${esc(p.name)}</span><button data-act="unpin" data-pid="${esc(pin.pid)}" aria-label="Schließen">✕</button></div>
+      <div class="pin-head"><span>${p.id === S.st.youId ? 'Deine Stapel' : `Stapel von ${esc(p.name)}`}</span><button data-act="unpin" data-pid="${esc(pin.pid)}" aria-label="Schließen">✕</button></div>
       <div class="pin-body">${row('related', 'yes', '✓ Passt', p.relatedCount)}${row('notRelated', 'no', '✕ Passt nicht', p.notRelatedCount)}</div></div>`;
   }
   function renderPins() {
@@ -931,7 +936,7 @@
     if (!root) { document.body.insertAdjacentHTML('beforeend', '<div id="pins-root"></div>'); root = document.getElementById('pins-root'); }
     const inGame = !!(S.st && S.st.phase !== 'lobby');
     if (!inGame) S.ui.pins = [];
-    S.ui.pins = (S.ui.pins || []).filter((x) => byId(x.pid));
+    S.ui.pins = (S.ui.pins || []).filter((x) => x.pid === '__overview' || byId(x.pid));
     if (root.dataset.drag) return;
     const keep = {};
     root.querySelectorAll('.pin').forEach((el) => { keep[el.dataset.pid] = el.querySelector('.pin-body').scrollTop; });
@@ -1437,10 +1442,17 @@
     unpin(t) { S.ui.pins = (S.ui.pins || []).filter((x) => x.pid !== t.dataset.pid); renderPins(); },
     closezoom() { S.ui.lightbox = null; renderLightbox(); },
     opennotes() { setDrawer('notes'); },
-    openoverview() { LS.set('unknown.ovseen', 1); setDrawer('overview'); },
+    openoverview() {
+      LS.set('unknown.ovseen', 1);
+      const pins = S.ui.pins || (S.ui.pins = []);
+      const i = pins.findIndex((x) => x.pid === '__overview');
+      if (i >= 0) pins.splice(i, 1);
+      else pins.push({ pid: '__overview', x: Math.max(6, window.innerWidth - 336), y: Math.round(window.innerHeight * 0.1) });
+      renderPins();
+    },
     closedrawer() { setDrawer(null); },
-    mark(t) { const m = S.ui.marks[t.dataset.k]; const v = t.dataset.v; m[v] = !m[v]; renderDrawers(); },
-    clearmarks() { S.ui.marks = { c: {}, a: {}, l: {} }; renderDrawers(); },
+    mark(t) { const m = S.ui.marks[t.dataset.k]; const v = t.dataset.v; m[v] = !m[v]; renderPins(); },
+    clearmarks() { S.ui.marks = { c: {}, a: {}, l: {} }; renderPins(); },
     zoomsel() { if (S.ui.sel !== null) { S.ui.lightbox = S.ui.sel; renderLightbox(); } },
     zoom(t) { S.ui.lightbox = Number(t.dataset.id); renderLightbox(); },
     flip(t) { send({ type: 'flip', pile: t.dataset.pile }); },
