@@ -1260,3 +1260,17 @@ body.drop-ready .table-surface { box-shadow: 0 0 0 1.2cqw rgba(110,230,140,.8), 
 .wd-tabs button { min-height: 40px; border: 0; border-radius: 11px; background: transparent; color: #d8cdb8; font: 800 14px system-ui, sans-serif; cursor: pointer; }
 .wd-tabs button.on { background: #e8a94a; color: #2a1608; }
 .hat-item.worn { border-color: #6be28a; }
+
+/* Chaos-Modus: Aktionsleiste, Zugzeit-Balken (Blitz) und Moduswahl */
+.pchips { flex: none; display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; padding: 4px 12px 0; }
+.pchip { font: 800 12px system-ui, sans-serif; padding: 4px 10px; border-radius: 999px; border: 1px solid #5a4630; background: rgba(12,8,22,.7); color: #d9c6a3; }
+.pchip.on { border-color: #7fc27a; color: #cdf3c9; }
+.pchip.used { opacity: .55; }
+button.pchip.ready { cursor: pointer; border-color: #c88a2c; color: #f6e7c4; }
+button.pchip.ready.go { background: linear-gradient(180deg, #f2bb5e, #c88a2c); color: #2a1a07; border-color: #f7cf86; animation: pchip-pulse 1.4s ease-in-out infinite; }
+@keyframes pchip-pulse { 50% { box-shadow: 0 0 0 4px rgba(242,187,94,.28); } }
+.turnbar { flex: none; height: 5px; margin: 5px 14px 0; border-radius: 3px; background: rgba(255,255,255,.12); overflow: hidden; }
+.turnbar i { display: block; height: 100%; width: 100%; background: #7fc27a; transition: width .2s linear, background .3s; }
+.turnbar.warn i { background: #e0603f; }
+.mode-row .btn { flex: 1; }
+@media (prefers-reduced-motion: reduce) { button.pchip.ready.go { animation: none; } }

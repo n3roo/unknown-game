@@ -147,6 +147,7 @@ async function restoreRooms() {
       p.connected = false; p.disconnectedAt = now; // Gnadenfrist ab Neustart
       if (p.profileId && !profiles.has(p.profileId)) { try { const pr = await store.get(p.profileId); if (pr) profiles.set(p.profileId, pr); } catch { /* egal */ } }
     }
+    if (room.game.turnEndsAt) room.game.turnEndsAt = now + G.TURN_MS; // Blitz nach Neustart: volle Zugzeit
     rooms.set(room.code, room); n += 1;
   }
   return n;
@@ -236,7 +237,8 @@ async function sendFriends(ws) {
   if (!ws.profile || ws.readyState !== ws.OPEN) return;
   const me = FR.norm(ws.profile);
   const load = async (ids) => (await Promise.all(ids.map(getProfile))).filter(Boolean).map(friendEntry);
-  const [friends, incoming, outgoing] = await Promise.all([load(me.friends), load(me.reqIn), load(me.reqOut)]);
+  const [friends0, incoming, outgoing] = await Promise.all([load(me.friends), load(me.reqIn), load(me.reqOut)]);
+  const friends = friends0.map((f) => ({ ...f, h2h: FR.record(me, f.id) }));
   send(ws, { type: 'friends', code: FR.prettyCode(me.id), friends, incoming, outgoing });
 }
 const pushFriends = (profileId) => socketsOf(profileId).forEach((c) => sendFriends(c));
@@ -278,7 +280,11 @@ function settleIfFinished(room) {
     room.rewards = {};
     return;
   }
-  room.rewards = E.settleGame({ entries, winnerId: room.game.winner, ranked: room.ranked, botGame: !!room.vsBot });
+  room.rewards = E.settleGame({ entries, winnerId: room.game.winner, ranked: room.ranked, botGame: !!room.vsBot, chaos: room.game.mode === 'chaos' });
+  if (!room.vsBot) { // Bilanz gegen Freunde
+    const win = entries.find((e) => e.id === room.game.winner);
+    if (win) FR.recordGame(win.profile, entries.filter((e) => e !== win).map((e) => e.profile));
+  }
   for (const e of entries) {
     saveProfile(e.profile);
     const ws = room.clients.get(e.id);
@@ -468,6 +474,15 @@ function botTick() {
 }
 const botTimer = setInterval(botTick, 600);
 botTimer.unref();
+
+/** Blitz-Modus: läuft die Zugzeit eines Menschen ab, wird automatisch für ihn gespielt. */
+const turnTimer = setInterval(() => {
+  const now = Date.now();
+  for (const room of rooms.values()) {
+    if (room.game.blitz && G.tick(room.game, now)) { room.lastActive = now; broadcast(room); }
+  }
+}, 1000);
+turnTimer.unref();
 
 
 /** Nach erfolgreicher Anmeldung: Konto anlegen oder auf das bestehende Konto-Profil wechseln. */
@@ -885,11 +900,32 @@ const handlers = {
     broadcast(room);
   },
 
+  /** Revanche: jeder kann „Nochmal“ drücken; sobald alle verbundenen Spieler zugestimmt haben, startet die nächste Runde. */
   rematch(ws, _msg, room, playerId) {
     if (room.ranked) return send(ws, { type: 'error', message: 'Ranked-Partien haben keine Revanche. Starte eine neue Suche.' });
-    room.settled = false;
-    room.rewards = null;
-    act(ws, room, G.rematch(room.game, playerId));
+    const v = G.rematchVote(room.game, playerId);
+    if (v.error) return send(ws, { type: 'error', message: v.error });
+    if (v.ready) return startRematch(room);
+    broadcast(room);
+  },
+
+  /** Host startet die Revanche, ohne auf alle zu warten. */
+  rematchnow(ws, _msg, room, playerId) {
+    if (room.ranked) return send(ws, { type: 'error', message: 'Ranked-Partien haben keine Revanche. Starte eine neue Suche.' });
+    if (room.game.phase !== 'finished') return send(ws, { type: 'error', message: 'Die Partie ist noch nicht vorbei.' });
+    if (playerId !== room.game.hostId) return send(ws, { type: 'error', message: 'Nur der Host kann ohne Warten starten.' });
+    startRematch(room);
+  },
+
+  /** Host wählt in der Lobby Klassisch oder Chaos (und Blitz). */
+  mode(ws, msg, room, playerId) {
+    if (room.ranked || room.vsBot) return send(ws, { type: 'error', message: 'In dieser Partie lässt sich der Modus nicht ändern.' });
+    act(ws, room, G.setMode(room.game, playerId, msg.mode, msg.blitz));
+  },
+
+  /** Chaos-Modus: Spezialaktion einsetzen (Ziel nur bei Klauen und Sperre). */
+  power(ws, msg, room, playerId) {
+    act(ws, room, G.useAction(room.game, playerId, typeof msg.target === 'string' ? msg.target : null));
   },
 
   leave(ws, _msg, room, playerId) {
@@ -902,12 +938,23 @@ const handlers = {
   },
 };
 
+/** Alle sind bereit: zurück in die Lobby-Logik und gleich die nächste Runde starten (Set und Modus bleiben). */
+function startRematch(room) {
+  const g = room.game;
+  room.settled = false;
+  room.rewards = null;
+  const r = G.rematch(g, g.hostId);
+  if (r.error) return;
+  if (g.players.length >= G.MIN_PLAYERS) G.startGame(g, g.hostId);
+  broadcast(room);
+}
+
 function act(ws, room, result) {
   if (result.error) return send(ws, { type: 'error', message: result.error });
   broadcast(room);
 }
 
-const NEEDS_ROOM = new Set(['start', 'clue', 'play', 'guess', 'flip', 'avatar', 'set', 'kick', 'rematch', 'leave']);
+const NEEDS_ROOM = new Set(['start', 'clue', 'play', 'guess', 'flip', 'avatar', 'set', 'kick', 'rematch', 'rematchnow', 'mode', 'power', 'leave']);
 
 function onMessage(ws, raw) {
   const now = Date.now();
@@ -1022,6 +1069,7 @@ wss.on('close', () => {
   clearInterval(heartbeat);
   clearInterval(janitor);
   clearInterval(matchTick);
+  clearInterval(turnTimer);
 });
 
 if (require.main === module) {

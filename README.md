@@ -52,3 +52,12 @@ Freundescode = erste 8 Zeichen der Profil-ID (`ABCD-1234`). Anfrage per Code ode
 
 ## Benachrichtigungen (Web-Push)
 Ohne externe Bibliothek (`lib/push.js`, RFC 8291 + VAPID). Die Schlüssel werden beim ersten Start erzeugt und im Store (Turso-Tabelle `kv`) gespeichert, optional per `VAPID_PUBLIC`/`VAPID_PRIVATE`/`VAPID_SUBJECT`. Nutzer schalten sie im Konto oder in der Freundesliste ein. Push gibt es für Freundschaftsanfragen und Lobby-Einladungen an Offline-Freunde; der Tipp auf die Einladung tritt der Lobby automatisch bei.
+
+## Chaos-Modus, Blitz und Revanche
+- **Modus**: Der Host wählt in der Lobby *Klassisch* oder *Chaos* (nur in Freundes-Lobbys, nicht in Ranked und Übungsrunden). Im Chaos-Modus bekommt jeder Spieler zu Beginn eine geheime Spezialaktion (einmal pro Partie, im eigenen Zug, beendet den Zug nicht): 🔮 Orakel (ein zufälliges Merkmal der eigenen Geheimkarte), 🧤 Klauen (zufällige Handkarte eines Mitspielers), ⛔ Sperre (nächster Zug eines Mitspielers wird übersprungen), ⚡ Doppelzug, 🛡️ Schutzschild (nächster falscher Tipp kostet nichts). Logik und Tests: `lib/game.js` (`setMode`, `useAction`), `test/chaos.test.js`.
+- **Blitz**: optional, 25 s pro Zug (`TURN_MS`). Läuft die Zeit ab, spielt der Server automatisch (zufällige Handkarte bzw. Stapel). Bots sind ausgenommen.
+- **Revanche**: Jeder kann „Nochmal!“ drücken; sobald alle verbundenen Spieler zugestimmt haben, startet die nächste Runde sofort (Set, Modus und Blitz bleiben). Der Host kann mit „Ohne Warten starten“ vorher beginnen.
+- **Bilanz**: Zwischen Freunden wird gezählt, wer wie oft gegen wen gewonnen hat (`lib/friends.js`, `recordGame`), sichtbar in der Freundesliste. Beim Entfernen des Freundes wird sie gelöscht.
+- **Mission**: „Spiele eine Chaos-Runde mit Freunden“ (`lib/missions.js`).
+- Vermarktungsplan: `docs/marketing.md`.
+

@@ -189,11 +189,17 @@
     const fx = { fresh: false, deal: false };
     const wasPlaying = prev && prev.phase !== 'lobby';
     if (st.phase === 'clues' && (!prev || prev.phase === 'lobby' || prev.phase === 'finished')) fx.deal = true;
+    if (st.phase === 'clues' && prev && prev.phase === 'finished') { S.ui.marks = { c: {}, a: {}, l: {} }; S.ui.sel = null; } // Revanche gestartet
     if (prev && prev.events && st.events.length > prev.events.length && prev.phase !== 'lobby') {
       for (const ev of st.events.slice(prev.events.length)) {
         if (ev.type === 'play') { fx.fresh = true; SFX.card(); setTimeout(() => (ev.related ? SFX.yes() : SFX.no()), 220); }
         else if (ev.type === 'guess') { fx.fresh = true; SFX.card(); setTimeout(() => (ev.ok ? SFX.yes() : SFX.wrong()), 220); }
         else if (ev.type === 'flip') SFX.tap();
+        else if (ev.type === 'power') {
+          SFX.tap();
+          if (ev.target === st.youId) setTimeout(() => banner(ev.kind === 'steal' ? 'Dir wurde eine Karte geklaut!' : 'Du wirst gesperrt!'), 250);
+        } else if (ev.type === 'skip' && ev.player === st.youId) setTimeout(() => banner('Du musst aussetzen'), 250);
+        else if (ev.type === 'timeout' && ev.player === st.youId) SFX.wrong();
       }
     }
     const myTurnNow = st.phase === 'playing' && st.current === st.you && !st.players[st.you].out;
@@ -270,7 +276,7 @@
         if (new URLSearchParams(location.search).has('code')) history.replaceState(null, '', location.pathname);
         break;
       case 'state':
-        { const prev = S.st; S.st = m.state; fxFor(prev, m.state, m); }
+        { const prev = S.st; S.st = m.state; S.turnEnd = m.state.turnMs != null ? Date.now() + m.state.turnMs : null; fxFor(prev, m.state, m); }
         if (m.state.phase === 'clues' && !LS.get('unknown.tutorial') && !S.ui.modal) S.ui.modal = { type: 'tutorial', page: 0 };
         S.code = m.code; S.setId = m.setId; S.ranked = !!m.ranked; S.rewards = m.rewards || null;
         if (m.state.phase !== 'finished') S.ui.hideEnd = false;
@@ -451,6 +457,18 @@
       </div>`);
     }
     const canStart = isHost && st.players.length >= 2;
+    const chaos = st.mode === 'chaos';
+    const canMode = isHost && !S.ranked && !st.players.some((p) => p.bot);
+    const modeHTML = S.ranked || st.players.some((p) => p.bot) ? '' : `
+      <section class="panel stack"><h2>Modus</h2>
+        <div class="row mode-row">
+          <button class="btn ${chaos ? 'ghost' : 'primary'}" data-act="setmode" data-mode="classic" ${canMode ? '' : 'disabled'}>Klassisch</button>
+          <button class="btn ${chaos ? 'primary' : 'ghost'}" data-act="setmode" data-mode="chaos" ${canMode ? '' : 'disabled'}>Chaos ⚡</button>
+        </div>
+        <p class="hint" style="margin:0">${chaos ? 'Jeder bekommt eine geheime Spezialaktion (einmal pro Partie): 🔮 Orakel, 🧤 Klauen, ⛔ Sperre, ⚡ Doppelzug oder 🛡️ Schutzschild.' : 'Das normale Spiel ohne Extras.'}</p>
+        <button class="btn ${st.blitz ? 'primary' : 'ghost'}" data-act="toggleblitz" ${canMode ? '' : 'disabled'}>⏱ Blitz: ${st.blitz ? 'an (25 s pro Zug)' : 'aus'}</button>
+        ${canMode ? '' : '<p class="hint" style="margin:0">Nur der Host ändert den Modus.</p>'}
+      </section>`;
     $app.innerHTML = `
       <h1 class="logo-h">${LOGO("sm")}</h1>
       <section class="panel stack">
@@ -458,6 +476,7 @@
           <span class="row"><button class="btn small" data-act="friends" aria-label="Freunde einladen">👥 Freunde</button><button class="btn small primary" data-act="share">Link</button></span></div>
         <p class="hint" style="margin:0">Set: ${esc(setDef().name)} · 2 bis 4 Spieler</p>
       </section>
+      ${modeHTML}
       <section class="panel"><h2>Spieler (${st.players.length}/4)</h2><div class="slots">${slots.join('')}</div></section>
       <section class="panel stack">
         <button class="btn ghost" data-act="toggleavatar">${S.ui.pickAvatar ? 'Avatar-Auswahl schließen' : 'Avatar ändern'}</button>
@@ -503,6 +522,8 @@
     else if (p.bot) tag = '🤖';
     else if (!p.connected) tag = 'getrennt';
     else if (st.phase === 'clues' && !p.clueGiven) tag = 'überlegt';
+    else if (p.skip) tag = 'gesperrt';
+    else if (p.powerReady && st.phase === 'playing') tag = '⚡';
     const plate = `<div class="s3-plate ${p.wrong > 0 ? 'bad w' + Math.min(p.wrong, 3) : 'good'}" title="Falsche Tipps: ${p.wrong}/3"><span class="nm">${S.ranked && p.region ? `<i class="fl">${flag(p.region)}</i>` : ''}${esc(isMe ? 'Du' : p.name)}</span>${tag ? `<em>${tag}</em>` : ''}</div>`;
     if (isMe) {
       return `<div class="s3 me ${turn ? 'turn' : ''} ${p.out ? 'out' : ''}">
@@ -559,14 +580,21 @@
       return `<div class="feed-item"><div class="mini">${cardHTML(ev.card)}</div><span>${name} legt aus</span><span class="dotmark ${ev.related ? 'yes' : 'no'}">${ev.related ? 'passt' : 'passt nicht'}</span></div>`;
     }
     if (ev.type === 'guess') {
-      return `<div class="feed-item"><div class="mini">${cardHTML(ev.guess)}</div><span>${name} rät</span><span class="dotmark ${ev.ok ? 'yes' : 'no'}">${ev.ok ? 'richtig' : 'falsch'}</span></div>`;
+      return `<div class="feed-item"><div class="mini">${cardHTML(ev.guess)}</div><span>${name} rät</span><span class="dotmark ${ev.ok ? 'yes' : 'no'}">${ev.ok ? 'richtig' : ev.shielded ? 'falsch, geschützt' : 'falsch'}</span></div>`;
     }
+    if (ev.type === 'power') {
+      const d = POWER[ev.kind] || { icon: '⚡', name: 'Spezialaktion' };
+      const t = byId(ev.target);
+      return `<div class="feed-item"><span>${name} setzt ${d.icon} <b>${d.name}</b> ein${t ? ` gegen <b>${esc(t.name)}</b>` : ''}</span></div>`;
+    }
+    if (ev.type === 'skip') return `<div class="feed-item"><span>${name} muss aussetzen</span></div>`;
+    if (ev.type === 'timeout') return `<div class="feed-item"><span>${name}: Zeit abgelaufen, es wurde automatisch gespielt</span></div>`;
     if (ev.type === 'flip') {
       return `<div class="feed-item"><span>${name} dreht den ${ev.pile === 'related' ? '„passt“' : '„passt nicht“'}-Stapel um${ev.auto ? ' (zweiter Fehler)' : ''}</span></div>`;
     }
     return `<div class="feed-item"><span>${name} ${ev.left ? 'hat das Spiel verlassen' : 'scheidet aus'}</span></div>`;
   }
-  const feedEvents = () => S.st.events.filter((e) => ['play', 'guess', 'flip', 'out'].includes(e.type));
+  const feedEvents = () => S.st.events.filter((e) => ['play', 'guess', 'flip', 'out', 'power', 'skip', 'timeout'].includes(e.type));
   function feedHTML() {
     const items = feedEvents().slice().reverse();
     return items.length ? items.map((ev) => eventLine(ev)).join('') : '<p class="notes-empty">Noch nichts passiert.</p>';
@@ -624,7 +652,43 @@
       return { text: `${p ? p.name : '?'} muss einen Stapel umdrehen.`, mine: false };
     }
     if (st.current === st.you) return { text: 'Du bist dran: Karte ausspielen oder raten.', mine: true };
-    return { text: `${st.players[st.current].name} ist dran.`, mine: false };
+    return { text: `${st.players[st.current].name} ist dran.${me.skip ? ' Du bist gesperrt und setzt danach aus.' : ''}`, mine: false };
+  }
+
+  /** Chaos-Modus: meine Aktion, Schutz, Doppelzug und Orakel-Hinweis als kleine Leiste über dem Tisch. */
+  function oracleText(o) {
+    const set = setDef(); const sh = S.data.sets.shared;
+    const list = o.kind === 'c' ? set.characters : o.kind === 'a' ? sh.accessories : sh.locations;
+    const label = o.kind === 'c' ? 'Charakter' : o.kind === 'a' ? 'Accessoire' : 'Ort';
+    return `${label}: ${(list[o.value] || {}).name || '?'}`;
+  }
+  function powerInfoHTML() {
+    const st = S.st; const pw = st.power;
+    if (!pw || !pw.id || st.phase !== 'playing') return '';
+    const d = POWER[pw.id];
+    const myTurn = st.current === st.you && !st.pending && !st.players[st.you].out;
+    const parts = [];
+    if (!pw.used) parts.push(`<button class="pchip ready ${myTurn ? 'go' : ''}" data-act="openpower">${d.icon} ${d.name} einsetzen</button>`);
+    else parts.push(`<span class="pchip used">${d.icon} ${d.name}: benutzt</span>`);
+    if (pw.shield) parts.push('<span class="pchip on">🛡️ Schutz aktiv</span>');
+    if (pw.extra) parts.push('<span class="pchip on">⚡ Doppelzug aktiv</span>');
+    if (pw.oracle) parts.push(`<span class="pchip on">🔮 ${esc(oracleText(pw.oracle))}</span>`);
+    return `<div class="pchips">${parts.join('')}</div>`;
+  }
+  function timerHTML() {
+    return S.st.turnMs != null ? '<div class="turnbar"><i id="turnfill"></i></div>' : '';
+  }
+  function powerHTML() {
+    const st = S.st; const pw = st.power;
+    if (!pw || !pw.id) return '<h2>Keine Spezialaktion</h2><button class="btn" data-act="close">Schließen</button>';
+    const d = POWER[pw.id];
+    let body = `<h2>${d.icon} ${d.name}</h2><p>${d.text}</p><p class="hint">Einmal pro Partie, nur in deinem Zug. Danach spielst du normal weiter (Karte ausspielen oder raten).</p>`;
+    if (pw.used) return `${body}<p>Schon benutzt.</p><button class="btn" data-act="close">Schließen</button>`;
+    if (d.target) {
+      const targets = st.players.filter((p, i) => i !== st.you && !p.out);
+      body += `<div class="stack">${targets.map((p) => `<button class="btn" data-act="usepower" data-id="${esc(p.id)}">${esc(p.name)}</button>`).join('')}</div>`;
+    } else body += '<button class="btn primary" data-act="usepower">Jetzt einsetzen</button>';
+    return `${body}<button class="btn ghost" data-act="close">Abbrechen</button>`;
   }
 
   function renderGame() {
@@ -661,6 +725,7 @@
         <button class="icon-btn" data-act="leavepage" aria-label="Spiel verlassen">⎋</button>
       </div>
       <div class="statusline ${status.mine ? 'mine' : ''}">${esc(line)}${S.ui.sel !== null && (clueMode || myTurn) ? `<small>Nochmal tippen oder auf den Tisch ziehen: ${clueMode ? 'Hinweis geben' : 'ausspielen'}</small>` : ''}</div>
+      ${powerInfoHTML()}${timerHTML()}
       <section class="board" aria-label="Spieltisch"><div class="bstage">
         <span class="lantern l"></span><span class="lantern r"></span>
         <div class="table-surface"></div>
@@ -743,6 +808,14 @@
 
   /* ----------------------------------------------------- Modale */
 
+  const POWER = {
+    oracle: { icon: '🔮', name: 'Orakel', text: 'Du erfährst ein zufälliges Merkmal deiner Geheimkarte (Charakter, Accessoire oder Ort).', target: false },
+    steal: { icon: '🧤', name: 'Klauen', text: 'Du nimmst einem Mitspieler eine zufällige Handkarte. Er zieht eine neue nach.', target: true },
+    block: { icon: '⛔', name: 'Sperre', text: 'Ein Mitspieler muss seinen nächsten Zug aussetzen.', target: true },
+    double: { icon: '⚡', name: 'Doppelzug', text: 'Nach deinem Zug bist du gleich nochmal dran.', target: false },
+    shield: { icon: '🛡️', name: 'Schutzschild', text: 'Dein nächster falscher Tipp kostet dich nichts.', target: false },
+  };
+
   const RULES = `
     <h2>Spielregeln</h2>
     <ul>
@@ -753,6 +826,8 @@
       <li><b>Raten:</b> Mit dem 🎯-Knopf neben dem Stapel nennst du statt einer Karte Charakter, Accessoire und Ort. Alle drei müssen stimmen, dann gewinnst du sofort.</li>
       <li>Ein falscher Tipp dreht einen deiner Stapel um (beim ersten Fehler wählst du, beim zweiten der andere). Beim dritten Fehler bist du raus.</li>
       <li>Tipp: Karten der anderen schließen Möglichkeiten aus. Eine „passt nicht“-Karte streicht gleich drei Merkmale.</li>
+      <li><b>Chaos-Modus</b> (Host wählt ihn in der Lobby): Jeder bekommt eine geheime Spezialaktion, einmal pro Partie und nur im eigenen Zug: 🔮 Orakel, 🧤 Klauen, ⛔ Sperre, ⚡ Doppelzug oder 🛡️ Schutzschild. Ein ⚡ am Namen zeigt, dass jemand seine Aktion noch hat.</li>
+      <li><b>Blitz:</b> Pro Zug bleiben 25 Sekunden. Läuft die Zeit ab, wird automatisch eine Karte gespielt.</li>
     </ul>`;
 
   /** Kurz-Tutorial: drei Seiten, einmalig beim ersten Spiel, danach über die Regeln abrufbar. */
@@ -802,6 +877,7 @@
       else if (m.type === 'friends') html = friendsHTML();
       else if (m.type === 'today') html = `${todayHTML()}<button class="btn" data-act="close">Schließen</button>`;
       else if (m.type === 'guess') html = guessHTML();
+      else if (m.type === 'power') html = powerHTML();
       else if (m.type === 'leave') {
         html = `<h2>Spiel verlassen?</h2><p>${st && st.phase === 'lobby' ? 'Du verlässt die Lobby.' : S.ranked ? 'In einer Ranked-Partie zählt das als Niederlage: −20 Punkte.' : 'Du scheidest aus der laufenden Partie aus.'}</p>
           <div class="actions"><button class="btn" data-act="close">Bleiben</button><button class="btn no" data-act="leaveconfirm">Verlassen</button></div>`;
@@ -945,6 +1021,19 @@
       <div class="actions"><button class="btn" data-act="close">Abbrechen</button><button class="btn primary" data-act="gsend" ${done ? '' : 'disabled'}>Tipp abgeben</button></div>`;
   }
 
+  /** Revanche: jeder kann „Nochmal“ drücken, gestartet wird, sobald alle bereit sind (der Host kann vorher starten). */
+  function rematchHTML(isHost) {
+    const st = S.st;
+    const votes = st.rematchVotes || [];
+    const humans = st.players.filter((p) => p.connected && !p.bot).length;
+    const iVoted = votes.includes(st.youId);
+    const main = iVoted
+      ? `<button class="btn primary" disabled>Warte auf die anderen (${votes.length}/${humans})</button>`
+      : `<button class="btn primary" data-act="rematch">Nochmal! (${votes.length}/${humans})</button>`;
+    const force = isHost && votes.length > 0 && votes.length < humans ? '<button class="btn" data-act="rematchnow">Ohne Warten starten</button>' : '';
+    return main + force;
+  }
+
   function endHTML() {
     const st = S.st;
     const w = byId(st.winner);
@@ -956,7 +1045,7 @@
       <div class="reveal" style="--n:${Math.min(st.players.length, 4)}">${st.players.map((p) =>
         `<div class="p">${avatarHTML(p.avatar, 30)}<span>${esc(p.name)}</span><button class="card-btn" data-act="zoom" data-id="${p.secret}">${cardHTML(p.secret)}</button></div>`).join('')}</div>
       <div class="stack">
-        ${S.ranked ? '<button class="btn primary" data-act="rankedagain">Nochmal suchen</button>' : isHost ? '<button class="btn primary" data-act="rematch">Neue Runde</button>' : '<p class="muted center" style="margin:0">Der Host startet die nächste Runde.</p>'}
+        ${S.ranked ? '<button class="btn primary" data-act="rankedagain">Nochmal suchen</button>' : rematchHTML(isHost)}
         <div class="row"><button class="btn ghost" data-act="hideend">Tisch ansehen</button><button class="btn ghost" data-act="leaveconfirm">Verlassen</button></div>
       </div></div>`;
   }
@@ -1117,7 +1206,7 @@
     } else {
       btns = `<button class="btn small ghost" data-act="friendremove" data-id="${esc(f.id)}">Zurückziehen</button>`;
     }
-    return `<li class="fr-row"><span class="fr-av">${avatarHTML(f.avatar, 38)}</span><span class="fr-n"><b>${esc(f.name)}</b><small class="${kind === 'friend' ? cls : ''}">${kind === 'friend' ? status : kind === 'in' ? 'möchte dein Freund sein' : 'Anfrage gesendet'}</small></span><span class="fr-b">${btns}</span></li>`;
+    return `<li class="fr-row"><span class="fr-av">${avatarHTML(f.avatar, 38)}</span><span class="fr-n"><b>${esc(f.name)}</b><small class="${kind === 'friend' ? cls : ''}">${kind === 'friend' ? status : kind === 'in' ? 'möchte dein Freund sein' : 'Anfrage gesendet'}</small>${kind === 'friend' && f.h2h && (f.h2h.w + f.h2h.l) > 0 ? `<small class="h2h">Bilanz ${f.h2h.w}:${f.h2h.l}${f.h2h.w > f.h2h.l ? ' · du führst' : f.h2h.w < f.h2h.l ? ' · er/sie führt' : ' · gleichauf'}</small>` : ''}</span><span class="fr-b">${btns}</span></li>`;
   }
   function friendsHTML() {
     const f = S.friends;
@@ -1311,6 +1400,11 @@
       } catch { /* abgebrochen */ }
     },
     start() { send({ type: 'start' }); },
+    setmode(t) { send({ type: 'mode', mode: t.dataset.mode, blitz: !!(S.st && S.st.blitz) }); },
+    toggleblitz() { send({ type: 'mode', mode: (S.st && S.st.mode) || 'classic', blitz: !(S.st && S.st.blitz) }); },
+    openpower() { S.ui.modal = { type: 'power' }; renderModals(); },
+    usepower(t) { send({ type: 'power', target: t.dataset.id || null }); S.ui.modal = null; renderModals(); },
+    rematchnow() { send({ type: 'rematchnow' }); },
     kick(t) { send({ type: 'kick', id: t.dataset.id }); },
     leavepage() { S.ui.modal = { type: 'leave' }; renderModals(); },
     leaveconfirm() { leaveNow(); },
@@ -1520,6 +1614,14 @@
   });
 
   setInterval(() => { if (S.ui.modal && S.ui.modal.type === 'friends' && S.open) send({ type: 'friends' }); }, 8000);
+  // Blitz: Zugzeit-Balken ohne komplettes Neuzeichnen aktualisieren
+  setInterval(() => {
+    const el = document.getElementById('turnfill');
+    if (!el || !S.turnEnd) return;
+    const left = Math.max(0, S.turnEnd - Date.now());
+    el.style.width = `${Math.min(100, left / 25000 * 100)}%`;
+    if (el.parentElement) el.parentElement.classList.toggle('warn', left < 8000);
+  }, 200);
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden && !S.open && !S.noReconnect && (!S.ws || S.ws.readyState > 1)) connect();
   });
