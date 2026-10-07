@@ -925,7 +925,7 @@ const handlers = {
 
   /** Chaos-Modus: Spezialaktion einsetzen (Ziel nur bei Klauen und Sperre). */
   power(ws, msg, room, playerId) {
-    act(ws, room, G.useAction(room.game, playerId, typeof msg.target === 'string' ? msg.target : null));
+    act(ws, room, G.useAction(room.game, playerId, typeof msg.kind === 'string' ? msg.kind : null, typeof msg.target === 'string' ? msg.target : null));
   },
 
   leave(ws, _msg, room, playerId) {

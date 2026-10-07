@@ -466,7 +466,7 @@
           <button class="btn ${chaos ? 'ghost' : 'primary'}" data-act="setmode" data-mode="classic" ${canMode ? '' : 'disabled'}>Klassisch</button>
           <button class="btn ${chaos ? 'primary' : 'ghost'}" data-act="setmode" data-mode="chaos" ${canMode ? '' : 'disabled'}>Chaos ⚡</button>
         </div>
-        <p class="hint" style="margin:0">${chaos ? 'Jeder bekommt eine geheime Spezialaktion (einmal pro Partie): 🔮 Orakel, 🧤 Klauen, ⛔ Sperre, ⚡ Doppelzug oder 🛡️ Schutzschild.' : 'Das normale Spiel ohne Extras.'}</p>
+        <p class="hint" style="margin:0">${chaos ? 'Jeder bekommt 2 geheime Chaoskarten als zweite Hand. Eine spielst du statt einer normalen Karte: 🔮 Orakel, 🧤 Klauen, ⛔ Sperre, ⚡ Doppelzug (danach 2 Karten) oder 🛡️ Schutzschild.' : 'Das normale Spiel ohne Extras.'}</p>
         <button class="btn ${st.blitz ? 'primary' : 'ghost'}" data-act="toggleblitz" ${canMode ? '' : 'disabled'}>⏱ Blitz: ${st.blitz ? 'an (25 s pro Zug)' : 'aus'}</button>
         ${canMode ? '' : '<p class="hint" style="margin:0">Nur der Host ändert den Modus.</p>'}
       </section>`;
@@ -584,9 +584,10 @@
       return `<div class="feed-item"><div class="mini">${cardHTML(ev.guess)}</div><span>${name} rät</span><span class="dotmark ${ev.ok ? 'yes' : 'no'}">${ev.ok ? 'richtig' : ev.shielded ? 'falsch, geschützt' : 'falsch'}</span></div>`;
     }
     if (ev.type === 'power') {
-      const d = POWER[ev.kind] || { icon: '⚡', name: 'Spezialaktion' };
+      const d = POWER[ev.kind] || { icon: '⚡', name: 'Chaoskarte' };
       const t = byId(ev.target);
-      return `<div class="feed-item"><span>${name} setzt ${d.icon} <b>${d.name}</b> ein${t ? ` gegen <b>${esc(t.name)}</b>` : ''}</span></div>`;
+      const mini = ev.card != null ? `<div class="mini">${cardHTML(ev.card)}</div>` : '';
+      return `<div class="feed-item">${mini}<span>${name} spielt ${d.icon} <b>${d.name}</b>${t ? ` gegen <b>${esc(t.name)}</b>` : ''}</span>${ev.card != null ? `<span class="dotmark ${ev.related ? 'yes' : 'no'}">${ev.related ? 'passt' : 'passt nicht'}</span>` : ''}</div>`;
     }
     if (ev.type === 'skip') return `<div class="feed-item"><span>${name} muss aussetzen</span></div>`;
     if (ev.type === 'timeout') return `<div class="feed-item"><span>${name}: Zeit abgelaufen, es wurde automatisch gespielt</span></div>`;
@@ -665,30 +666,29 @@
   }
   function powerInfoHTML() {
     const st = S.st; const pw = st.power;
-    if (!pw || !pw.id || st.phase !== 'playing') return '';
-    const d = POWER[pw.id];
+    if (!pw || st.phase !== 'playing') return '';
     const myTurn = st.current === st.you && !st.pending && !st.players[st.you].out;
-    const parts = [];
-    if (!pw.used) parts.push(`<button class="pchip ready ${myTurn ? 'go' : ''}" data-act="openpower">${d.icon} ${d.name} einsetzen</button>`);
-    else parts.push(`<span class="pchip used">${d.icon} ${d.name}: benutzt</span>`);
+    const parts = pw.cards.map((k) => { const d = POWER[k]; return `<button class="pchip ready ${myTurn ? 'go' : ''}" data-act="openpower" data-kind="${k}">${d.icon} ${d.name}</button>`; });
+    if (!pw.cards.length) parts.push('<span class="pchip used">Keine Chaoskarten mehr</span>');
+    if (pw.bonus) parts.push(`<span class="pchip on">⚡ Noch ${pw.bonus} Karte${pw.bonus > 1 ? 'n' : ''} ausspielen</span>`);
     if (pw.shield) parts.push('<span class="pchip on">🛡️ Schutz aktiv</span>');
-    if (pw.extra) parts.push('<span class="pchip on">⚡ Doppelzug aktiv</span>');
     if (pw.oracle) parts.push(`<span class="pchip on">🔮 ${esc(oracleText(pw.oracle))}</span>`);
-    return `<div class="pchips">${parts.join('')}</div>`;
+    return `<div class="pchips"><span class="pchip lbl">Chaoskarten</span>${parts.join('')}</div>`;
   }
   function timerHTML() {
     return S.st.turnMs != null ? '<div class="turnbar"><i id="turnfill"></i></div>' : '';
   }
-  function powerHTML() {
+  function powerHTML(kind) {
     const st = S.st; const pw = st.power;
-    if (!pw || !pw.id) return '<h2>Keine Spezialaktion</h2><button class="btn" data-act="close">Schließen</button>';
-    const d = POWER[pw.id];
-    let body = `<h2>${d.icon} ${d.name}</h2><p>${d.text}</p><p class="hint">Einmal pro Partie, nur in deinem Zug. Danach spielst du normal weiter (Karte ausspielen oder raten).</p>`;
-    if (pw.used) return `${body}<p>Schon benutzt.</p><button class="btn" data-act="close">Schließen</button>`;
+    const d = POWER[kind];
+    if (!pw || !d || !pw.cards.includes(kind)) return '<h2>Keine Chaoskarte</h2><button class="btn" data-act="close">Schließen</button>';
+    const myTurn = st.current === st.you && !st.pending && !st.players[st.you].out;
+    let body = `<h2>${d.icon} ${d.name}</h2><p>${d.text}</p><p class="hint">Eine Chaoskarte spielst du statt einer normalen Karte, nur in deinem Zug.</p>`;
+    if (!myTurn) return `${body}<p>Du bist gerade nicht dran.</p><button class="btn" data-act="close">Schließen</button>`;
     if (d.target) {
       const targets = st.players.filter((p, i) => i !== st.you && !p.out);
-      body += `<div class="stack">${targets.map((p) => `<button class="btn" data-act="usepower" data-id="${esc(p.id)}">${esc(p.name)}</button>`).join('')}</div>`;
-    } else body += '<button class="btn primary" data-act="usepower">Jetzt einsetzen</button>';
+      body += `<div class="stack">${targets.map((p) => `<button class="btn" data-act="usepower" data-kind="${kind}" data-id="${esc(p.id)}">${esc(p.name)}</button>`).join('')}</div>`;
+    } else body += `<button class="btn primary" data-act="usepower" data-kind="${kind}">Jetzt ausspielen</button>`;
     return `${body}<button class="btn ghost" data-act="close">Abbrechen</button>`;
   }
 
@@ -809,11 +809,11 @@
   /* ----------------------------------------------------- Modale */
 
   const POWER = {
-    oracle: { icon: '🔮', name: 'Orakel', text: 'Du erfährst ein zufälliges Merkmal deiner Geheimkarte (Charakter, Accessoire oder Ort).', target: false },
-    steal: { icon: '🧤', name: 'Klauen', text: 'Du nimmst einem Mitspieler eine zufällige Handkarte. Er zieht eine neue nach.', target: true },
-    block: { icon: '⛔', name: 'Sperre', text: 'Ein Mitspieler muss seinen nächsten Zug aussetzen.', target: true },
-    double: { icon: '⚡', name: 'Doppelzug', text: 'Nach deinem Zug bist du gleich nochmal dran.', target: false },
-    shield: { icon: '🛡️', name: 'Schutzschild', text: 'Dein nächster falscher Tipp kostet dich nichts.', target: false },
+    oracle: { icon: '🔮', name: 'Orakel', text: 'Ersetzt deinen Zug: Du erfährst ein zufälliges Merkmal deiner Geheimkarte.', target: false },
+    steal: { icon: '🧤', name: 'Klauen', text: 'Ersetzt deinen Zug: Du nimmst einem Mitspieler eine zufällige Handkarte und legst sie sofort offen auf deine Stapel.', target: true },
+    block: { icon: '⛔', name: 'Sperre', text: 'Ersetzt deinen Zug: Ein Mitspieler muss seinen nächsten Zug aussetzen.', target: true },
+    double: { icon: '⚡', name: 'Doppelzug', text: 'Danach darfst du zwei Karten ausspielen (oder raten).', target: false },
+    shield: { icon: '🛡️', name: 'Schutzschild', text: 'Ersetzt deinen Zug: Dein nächster falscher Tipp kostet dich nichts.', target: false },
   };
 
   const RULES = `
@@ -826,7 +826,7 @@
       <li><b>Raten:</b> Mit dem 🎯-Knopf neben dem Stapel nennst du statt einer Karte Charakter, Accessoire und Ort. Alle drei müssen stimmen, dann gewinnst du sofort.</li>
       <li>Ein falscher Tipp dreht einen deiner Stapel um (beim ersten Fehler wählst du, beim zweiten der andere). Beim dritten Fehler bist du raus.</li>
       <li>Tipp: Karten der anderen schließen Möglichkeiten aus. Eine „passt nicht“-Karte streicht gleich drei Merkmale.</li>
-      <li><b>Chaos-Modus</b> (Host wählt ihn in der Lobby): Jeder bekommt eine geheime Spezialaktion, einmal pro Partie und nur im eigenen Zug: 🔮 Orakel, 🧤 Klauen, ⛔ Sperre, ⚡ Doppelzug oder 🛡️ Schutzschild. Ein ⚡ am Namen zeigt, dass jemand seine Aktion noch hat.</li>
+      <li><b>Chaos-Modus</b> (Host wählt ihn in der Lobby): Jeder bekommt 2 geheime Chaoskarten als zweite Hand. Im eigenen Zug spielst du eine davon statt einer normalen Karte: 🔮 Orakel, 🧤 Klauen (die geklaute Karte liegt sofort auf deinen Stapeln), ⛔ Sperre, ⚡ Doppelzug (danach darfst du 2 Karten ausspielen) oder 🛡️ Schutzschild. Ein ⚡ am Namen zeigt, dass jemand noch Chaoskarten hat.</li>
       <li><b>Blitz:</b> Pro Zug bleiben 25 Sekunden. Läuft die Zeit ab, wird automatisch eine Karte gespielt.</li>
     </ul>`;
 
@@ -877,7 +877,7 @@
       else if (m.type === 'friends') html = friendsHTML();
       else if (m.type === 'today') html = `${todayHTML()}<button class="btn" data-act="close">Schließen</button>`;
       else if (m.type === 'guess') html = guessHTML();
-      else if (m.type === 'power') html = powerHTML();
+      else if (m.type === 'power') html = powerHTML(m.kind);
       else if (m.type === 'leave') {
         html = `<h2>Spiel verlassen?</h2><p>${st && st.phase === 'lobby' ? 'Du verlässt die Lobby.' : S.ranked ? 'In einer Ranked-Partie zählt das als Niederlage: −20 Punkte.' : 'Du scheidest aus der laufenden Partie aus.'}</p>
           <div class="actions"><button class="btn" data-act="close">Bleiben</button><button class="btn no" data-act="leaveconfirm">Verlassen</button></div>`;
@@ -1407,8 +1407,8 @@
     start() { send({ type: 'start' }); },
     setmode(t) { send({ type: 'mode', mode: t.dataset.mode, blitz: !!(S.st && S.st.blitz) }); },
     toggleblitz() { send({ type: 'mode', mode: (S.st && S.st.mode) || 'classic', blitz: !(S.st && S.st.blitz) }); },
-    openpower() { S.ui.modal = { type: 'power' }; renderModals(); },
-    usepower(t) { send({ type: 'power', target: t.dataset.id || null }); S.ui.modal = null; renderModals(); },
+    openpower(t) { S.ui.modal = { type: 'power', kind: t.dataset.kind }; renderModals(); },
+    usepower(t) { send({ type: 'power', kind: t.dataset.kind, target: t.dataset.id || null }); S.ui.modal = null; renderModals(); },
     rematchnow() { send({ type: 'rematchnow' }); },
     kick(t) { send({ type: 'kick', id: t.dataset.id }); },
     leavepage() { S.ui.modal = { type: 'leave' }; renderModals(); },

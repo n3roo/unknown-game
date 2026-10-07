@@ -1291,3 +1291,4 @@ button.pchip.ready.go { background: linear-gradient(180deg, #f2bb5e, #c88a2c); c
 .pin:not(.ov) .pin-head { font-size: 13px; }
 .reveal .card-btn { width: min(100%, 104px); }
 .sheet-x { position: sticky; top: 0; float: right; z-index: 5; width: 34px; height: 34px; margin: -4px -4px 0 8px; border-radius: 50%; border: 0; background: rgba(255,255,255,.14); color: #fff; font-size: 15px; cursor: pointer; }
+.pchip.lbl { border: 0; background: none; opacity: .7; padding-left: 0; }

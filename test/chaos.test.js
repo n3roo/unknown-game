@@ -18,7 +18,7 @@ function chaosGame(n = 3, { blitz = false, seed = 7 } = {}) {
   assert.strictEqual(g.phase, 'playing');
   return g;
 }
-const give = (g, id, power) => { const p = g.players.find((q) => q.id === id); p.power = power; p.powerUsed = false; return p; };
+const give = (g, id, ...kinds) => { const p = g.players.find((q) => q.id === id); p.chaos = kinds; return p; };
 
 test('Modus lässt sich nur vom Host in der Lobby ändern', () => {
   const g = G.createGame('p0');
@@ -33,39 +33,41 @@ test('Modus lässt sich nur vom Host in der Lobby ändern', () => {
   assert.ok(G.setMode(g, 'p0', 'classic', false).error, 'im Spiel nicht mehr änderbar');
 });
 
-test('Klassisch: keine Spezialaktionen, Chaos: jeder bekommt genau eine', () => {
+test('Klassisch: keine Chaoskarten, Chaos: jeder bekommt zwei verschiedene', () => {
   const g = G.createGame('p0');
   G.addPlayer(g, { id: 'p0', name: 'A', avatar: 'a' });
   G.addPlayer(g, { id: 'p1', name: 'B', avatar: 'b' });
   G.startGame(g, 'p0');
-  assert.ok(g.players.every((p) => p.power === null));
-  assert.ok(G.useAction(g, 'p0', 'p1').error);
+  assert.ok(g.players.every((p) => p.chaos.length === 0));
+  assert.ok(G.useAction(g, 'p0', 'shield', 'p1').error);
 
   const c = chaosGame(4);
-  assert.ok(c.players.every((p) => G.POWERS.includes(p.power) && !p.powerUsed));
+  assert.ok(c.players.every((p) => p.chaos.length === 2 && p.chaos[0] !== p.chaos[1] && p.chaos.every((k) => G.POWERS.includes(k))));
   const v = G.viewFor(c, 'p1');
   assert.strictEqual(v.mode, 'chaos');
-  assert.ok(v.power && G.POWERS.includes(v.power.id));
+  assert.ok(v.power && v.power.cards.length === 2);
   // Fremde Aktionen bleiben geheim, nur „hat noch eine“ ist sichtbar
-  assert.ok(v.players.every((p) => p.powerReady === true));
-  assert.ok(!JSON.stringify(v.players).includes('"power"'));
+  assert.ok(v.players.every((p) => p.powerReady === true && p.chaosCount === 2));
+  assert.ok(!JSON.stringify(v.players).includes('"chaos"'));
 });
 
-test('Aktion nur im eigenen Zug und nur einmal', () => {
+test('Chaoskarte nur im eigenen Zug und nur einmal, sie ersetzt den Zug', () => {
   const g = chaosGame(3);
   const other = g.players[1];
   give(g, other.id, 'shield');
-  assert.ok(G.useAction(g, other.id).error, 'nicht am Zug');
-  const me = give(g, g.players[g.current].id, 'shield');
-  assert.ok(G.useAction(g, me.id).ok);
-  assert.ok(G.useAction(g, me.id).error, 'nur einmal');
-  assert.strictEqual(g.current, g.players.indexOf(me), 'Zug bleibt bei mir');
+  assert.ok(G.useAction(g, other.id, 'shield').error, 'nicht am Zug');
+  const idx = g.current;
+  const me = give(g, g.players[idx].id, 'shield', 'oracle');
+  assert.ok(G.useAction(g, me.id, 'block', 'p1').error, 'Karte nicht auf der Hand');
+  assert.ok(G.useAction(g, me.id, 'shield').ok);
+  assert.deepStrictEqual(me.chaos, ['oracle']);
+  assert.notStrictEqual(g.current, idx, 'Zug ist vorbei, wie bei einer normalen Karte');
 });
 
 test('Orakel verrät genau ein echtes Merkmal der eigenen Geheimkarte', () => {
   const g = chaosGame(3);
   const me = give(g, g.players[g.current].id, 'oracle');
-  assert.ok(G.useAction(g, me.id, null, seeded(3)).ok);
+  assert.ok(G.useAction(g, me.id, 'oracle', null, seeded(3)).ok);
   const d = G.decode(me.secret);
   assert.ok(['c', 'a', 'l'].includes(me.oracle.kind));
   assert.strictEqual(me.oracle.value, d[me.oracle.kind]);
@@ -74,32 +76,31 @@ test('Orakel verrät genau ein echtes Merkmal der eigenen Geheimkarte', () => {
   for (const o of others) assert.strictEqual(G.viewFor(g, o.id).power.oracle, null);
 });
 
-test('Klauen: eine Karte wechselt die Hand, das Opfer zieht nach', () => {
+test('Klauen: die Karte des Opfers wird sofort auf meine Stapel gelegt, mein Blatt bleibt', () => {
   const g = chaosGame(3);
   const me = give(g, g.players[g.current].id, 'steal');
   const victim = g.players.find((p) => p !== me);
+  const myHand = me.hand.slice();
   const before = new Set(victim.hand);
-  const total = me.hand.length + victim.hand.length;
-  assert.ok(G.useAction(g, me.id, victim.id, seeded(5)).ok);
-  assert.strictEqual(me.hand.length, 6, 'ich habe jetzt eine Karte mehr');
-  const stolen = me.hand.find((c) => before.has(c));
-  assert.ok(stolen !== undefined, 'eine Karte des Opfers ist bei mir');
-  assert.ok(!victim.hand.includes(stolen));
+  assert.ok(G.useAction(g, me.id, 'steal', victim.id, seeded(5)).ok);
+  assert.deepStrictEqual(me.hand, myHand, 'eigene Hand unverändert');
+  const placed = me.related.concat(me.notRelated);
+  assert.strictEqual(placed.filter((c) => before.has(c)).length, 1);
   assert.strictEqual(victim.hand.length, 5, 'Opfer zieht nach');
-  assert.strictEqual(me.hand.length + victim.hand.length, total + 1);
-  assert.ok(G.useAction(g, me.id, me.id).error, 'sich selbst klauen geht nicht (und nur einmal)');
-  // Spielen danach: Hand ist wieder 5
-  G.playCard(g, me.id, me.hand[0]);
-  assert.strictEqual(me.hand.length, 5);
+  const ev = g.events.find((e) => e.type === 'power');
+  assert.ok(placed.includes(ev.card));
+  assert.notStrictEqual(g.players[g.current].id, me.id);
 });
 
-test('Klauen braucht ein gültiges Ziel', () => {
+test('Klauen und Sperre brauchen ein gültiges Ziel', () => {
   const g = chaosGame(3);
-  const me = give(g, g.players[g.current].id, 'steal');
-  assert.ok(G.useAction(g, me.id, null).error);
-  assert.ok(G.useAction(g, me.id, me.id).error);
-  assert.ok(G.useAction(g, me.id, 'niemand').error);
-  assert.strictEqual(me.powerUsed, false, 'Fehler verbraucht die Aktion nicht');
+  const me = give(g, g.players[g.current].id, 'steal', 'block');
+  for (const k of ['steal', 'block']) {
+    assert.ok(G.useAction(g, me.id, k, null).error);
+    assert.ok(G.useAction(g, me.id, k, me.id).error);
+    assert.ok(G.useAction(g, me.id, k, 'niemand').error);
+  }
+  assert.deepStrictEqual(me.chaos, ['steal', 'block'], 'Fehler verbraucht die Karte nicht');
 });
 
 test('Sperre überspringt den nächsten Zug des Ziels genau einmal', () => {
@@ -107,63 +108,63 @@ test('Sperre überspringt den nächsten Zug des Ziels genau einmal', () => {
   const startIdx = g.current;
   const me = give(g, g.players[startIdx].id, 'block');
   const next = g.players[(startIdx + 1) % 3];
-  assert.ok(G.useAction(g, me.id, next.id).ok);
-  G.playCard(g, me.id, me.hand[0]);
+  assert.ok(G.useAction(g, me.id, 'block', next.id).ok);
   const after = g.players[g.current];
-  assert.notStrictEqual(after.id, next.id, 'gesperrter Spieler wird übersprungen');
-  assert.strictEqual(after.id, g.players[(startIdx + 2) % 3].id);
+  assert.strictEqual(after.id, g.players[(startIdx + 2) % 3].id, 'gesperrter Spieler wird übersprungen');
   assert.strictEqual(next.skip, false, 'Sperre ist verbraucht');
   assert.ok(g.events.some((e) => e.type === 'skip' && e.player === next.id));
-  // Eine Runde später ist er wieder dran
   G.playCard(g, after.id, after.hand[0]);
   assert.strictEqual(g.players[g.current].id, me.id);
-  G.playCard(g, me.id, me.hand[0]);
-  assert.strictEqual(g.players[g.current].id, next.id);
 });
 
 test('Sperre bei zwei Spielern: ich bin direkt nochmal dran', () => {
   const g = chaosGame(2);
   const me = give(g, g.players[g.current].id, 'block');
   const opp = g.players.find((p) => p !== me);
-  G.useAction(g, me.id, opp.id);
-  G.playCard(g, me.id, me.hand[0]);
+  G.useAction(g, me.id, 'block', opp.id);
   assert.strictEqual(g.players[g.current].id, me.id);
 });
 
-test('Doppelzug: nach dem Zug nochmal dran, aber nur einmal', () => {
+test('Doppelzug: danach darf ich genau zwei normale Karten ausspielen', () => {
   const g = chaosGame(3);
   const me = give(g, g.players[g.current].id, 'double');
-  assert.ok(G.useAction(g, me.id).ok);
+  assert.ok(G.useAction(g, me.id, 'double').ok);
+  assert.strictEqual(g.players[g.current].id, me.id, 'Zug bleibt bei mir');
+  assert.strictEqual(me.bonus, 2);
   G.playCard(g, me.id, me.hand[0]);
-  assert.strictEqual(g.players[g.current].id, me.id, 'nochmal dran');
-  assert.strictEqual(me.extra, false);
+  assert.strictEqual(g.players[g.current].id, me.id, 'noch eine Karte');
   G.playCard(g, me.id, me.hand[0]);
+  assert.notStrictEqual(g.players[g.current].id, me.id);
+  assert.strictEqual(me.bonus, 0);
+});
+
+test('Doppelzug: ein Tipp beendet den Zug sofort', () => {
+  const g = chaosGame(3);
+  const me = give(g, g.players[g.current].id, 'double');
+  G.useAction(g, me.id, 'double');
+  G.playCard(g, me.id, me.hand[0]);
+  const d = G.decode(me.secret);
+  G.guess(g, me.id, (d.c + 1) % 7, (d.a + 1) % 7, (d.l + 1) % 7);
+  assert.strictEqual(me.bonus, 0);
+  G.flipPile(g, me.id, 'related');
   assert.notStrictEqual(g.players[g.current].id, me.id);
 });
 
 test('Schutzschild: ein falscher Tipp kostet nichts, danach wirkt er nicht mehr', () => {
   const g = chaosGame(3);
-  const me = give(g, g.players[g.current].id, 'shield');
-  G.useAction(g, me.id);
+  const idx = g.current;
+  const me = give(g, g.players[idx].id, 'shield');
+  G.useAction(g, me.id, 'shield');
+  // Wieder an mir (zwei Runden später)
+  G.playCard(g, g.players[g.current].id, g.players[g.current].hand[0]);
+  G.playCard(g, g.players[g.current].id, g.players[g.current].hand[0]);
+  assert.strictEqual(g.players[g.current].id, me.id);
   const d = G.decode(me.secret);
-  const wrong = { c: (d.c + 1) % 7, a: (d.a + 1) % 7, l: (d.l + 1) % 7 };
-  assert.ok(G.guess(g, me.id, wrong.c, wrong.a, wrong.l).ok);
+  assert.ok(G.guess(g, me.id, (d.c + 1) % 7, (d.a + 1) % 7, (d.l + 1) % 7).ok);
   assert.strictEqual(me.wrong, 0);
   assert.strictEqual(g.pending, null, 'kein Stapel muss umgedreht werden');
-  assert.notStrictEqual(g.players[g.current].id, me.id, 'Zug ist vorbei');
   assert.strictEqual(me.shield, false);
   assert.ok(g.events.some((e) => e.type === 'guess' && e.shielded));
-});
-
-test('Doppelzug + Schutzschild-Spieler mit drittem Fehler scheidet nicht doppelt aus', () => {
-  const g = chaosGame(3);
-  const me = give(g, g.players[g.current].id, 'double');
-  me.wrong = 2;
-  G.useAction(g, me.id);
-  const d = G.decode(me.secret);
-  G.guess(g, me.id, (d.c + 1) % 7, (d.a + 1) % 7, (d.l + 1) % 7);
-  assert.strictEqual(me.out, true);
-  assert.notStrictEqual(g.players[g.current].id, me.id, 'ausgeschiedene Spieler bekommen keinen Extra-Zug');
 });
 
 test('Gesperrte Spieler dürfen die Partie nicht festfahren (alle anderen gesperrt)', () => {
@@ -229,7 +230,7 @@ test('Revanche: alle verbundenen Spieler müssen zustimmen, Modus bleibt erhalte
   assert.strictEqual(g.mode, 'chaos');
   assert.strictEqual(g.blitz, true);
   assert.ok(G.startGame(g, g.hostId).ok);
-  assert.ok(g.players.every((p) => p.power && !p.powerUsed), 'neue Aktionen für die neue Runde');
+  assert.ok(g.players.every((p) => p.chaos.length === 2), 'neue Chaoskarten für die neue Runde');
   assert.deepStrictEqual(g.rematchVotes, []);
 });
 
@@ -255,9 +256,10 @@ test('Ganze Chaos-Partien mit zufälligen Aktionen laufen immer sauber zu Ende',
       const p = g.players[g.current];
       assert.ok(p && !p.out, `Spieler am Zug darf nicht ausgeschieden sein (Seed ${seed})`);
       if (g.pending) { G.flipPile(g, p.id, p.flipped.related ? 'notRelated' : 'related'); continue; }
-      if (p.power && !p.powerUsed && rnd(2) === 0) {
+      if (p.chaos.length && rnd(2) === 0) {
         const targets = g.players.filter((q) => q.id !== p.id && !q.out);
-        G.useAction(g, p.id, targets[rnd(targets.length)].id, rnd);
+        G.useAction(g, p.id, p.chaos[rnd(p.chaos.length)], targets[rnd(targets.length)].id, rnd);
+        continue;
       }
       const roll = rnd(10);
       if (roll < 2 || !p.hand.length) G.guess(g, p.id, rnd(7), rnd(7), rnd(7));
