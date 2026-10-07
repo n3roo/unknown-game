@@ -951,8 +951,8 @@
     if (root.dataset.id === String(id) && root.innerHTML) return;
     const f = feats(id);
     root.dataset.id = String(id);
-    root.innerHTML = `<div class="lb" data-act="closezoom"><div class="lb-card">${cardHTML(id)}</div>
-      <p class="zoom-names"><b>${esc(f.c.name)}</b><br>${esc(f.a.name)} · ${esc(f.l.name)}</p><span class="lb-hint">Tippen zum Schließen</span></div>`;
+    root.innerHTML = `<div class="zlb" data-act="closezoom"><div class="zlb-card">${cardHTML(id)}</div>
+      <p class="zoom-names"><b>${esc(f.c.name)}</b><br>${esc(f.a.name)} · ${esc(f.l.name)}</p><span class="zlb-hint">Tippen zum Schließen</span></div>`;
   }
   (() => {
     let d = null;

@@ -825,7 +825,7 @@ body.room {
 .tabs button { flex: 1; padding: 9px; border-radius: 10px; border: 1px solid #5a4630; background: rgba(255,255,255,.06); color: inherit; font-weight: 700; cursor: pointer; }
 .tabs button[aria-pressed="true"] { background: #e8a94a; color: #2a1a0c; }
 .lb { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
-.lb li { display: grid; grid-template-columns: 30px 34px 1fr auto; gap: 8px; align-items: center; padding: 6px 8px; border-radius: 10px; background: rgba(255,255,255,.06); }
+.lb li { display: grid; grid-template-columns: 30px 34px 1fr auto auto; gap: 8px; align-items: center; padding: 6px 8px; border-radius: 10px; background: rgba(255,255,255,.06); }
 .lb li.you { outline: 2px solid #e8a94a; background: rgba(232,169,74,.18); }
 .lb em { font-style: normal; text-align: center; font-weight: 800; }
 .lb .lb-n { display: grid; line-height: 1.2; min-width: 0; } .lb .lb-n b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .lb small { color: #aaa; }
@@ -976,7 +976,7 @@ body.drop-ready .table-surface { box-shadow: 0 0 0 1.2cqw rgba(110,230,140,.8), 
 .fr-list { padding-inline: 0 !important; margin-inline: 0 !important; width: 100%; }
 .fr-n small { white-space: normal; }
 
-.lb-add { width: 34px; height: 34px; border-radius: 10px; border: 1px solid #5a4630; background: rgba(232,169,74,.18); color: #ffd98a; font: 800 18px/1 system-ui; cursor: pointer; margin-left: 8px; flex: none; }
+.lb-add { width: 34px; height: 34px; border-radius: 10px; border: 1px solid #5a4630; background: rgba(232,169,74,.18); color: #ffd98a; font: 800 18px/1 system-ui; cursor: pointer; flex: none; }
 .lb-f { margin-left: 8px; font-size: 18px; flex: none; }
 
 /* Avatar-Wechsler am Hero und Heute-Reiter am Rand */
@@ -1228,11 +1228,11 @@ body.drop-ready .table-surface { box-shadow: 0 0 0 1.2cqw rgba(110,230,140,.8), 
 .pin-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
 .pin-cards .card-btn { padding: 0; border: 0; background: none; }
 #lightbox-root { position: fixed; inset: 0; z-index: 70; pointer-events: none; }
-.lb { position: fixed; inset: 0; pointer-events: auto; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+.zlb { position: fixed; inset: 0; pointer-events: auto; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
   background: rgba(8,4,2,.82); backdrop-filter: blur(4px); animation: fadein .15s ease both; cursor: zoom-out; }
-.lb-card { width: min(340px, 82vw, 52vh); }
-.lb .zoom-names { color: #fff; margin: 4px 0 0; }
-.lb-hint { font-size: 12px; opacity: .6; color: #fff; }
+.zlb-card { width: min(340px, 82vw, 52vh); }
+.zlb .zoom-names { color: #fff; margin: 4px 0 0; }
+.zlb-hint { font-size: 12px; opacity: .6; color: #fff; }
 
 /* ---------- Startseite: zwei Karten + Tab-Leiste unten ---------- */
 .home-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
